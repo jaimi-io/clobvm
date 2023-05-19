@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/ava-labs/avalanchego v1.10.0
+	github.com/ethereum/go-ethereum v1.10.26
 	github.com/onsi/ginkgo/v2 v2.7.0
 	github.com/onsi/gomega v1.25.0
 	sigs.k8s.io/yaml v1.3.0
@@ -20,7 +21,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91 // indirect
 	github.com/dop251/goja v0.0.0-20220405120441-9037c2b61cbf // indirect
-	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
