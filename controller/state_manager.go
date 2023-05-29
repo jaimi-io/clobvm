@@ -7,13 +7,13 @@ import (
 type StateManager struct{}
 
 func (*StateManager) HeightKey() []byte {
-	return nil
+	return []byte{0x1}
 }
 
 func (*StateManager) IncomingWarpKey(sourceChainID ids.ID, msgID ids.ID) []byte {
-	return nil
+	return []byte{}
 }
 
 func (*StateManager) OutgoingWarpKey(txID ids.ID) []byte {
-	return nil
+	return []byte{}
 }
