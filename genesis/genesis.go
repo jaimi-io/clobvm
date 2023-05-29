@@ -10,10 +10,18 @@ import (
 
 type Genesis struct {}
 
-func (g *Genesis) GetHRP() string {
-	return ""
+func New() *Genesis {
+	return &Genesis{}
 }
 
-func (g *Genesis) Load(context.Context, trace.Tracer, chain.Database) error {
+func (g *Genesis) GetHRP() string {
+	return "clob"
+}
+
+func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, db chain.Database) error {
+	ctx, span := tracer.Start(ctx, "genesis.Load")
+	defer span.End()
+
+	// TODO: add token amounts
 	return nil
 }
