@@ -5,9 +5,12 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/hypersdk/chain"
+	"github.com/jaimi-io/hypersdk/codec"
 )
 
-type EIP712 struct {}
+type EIP712 struct {
+	
+}
 
 func (e *EIP712) MaxUnits(r chain.Rules) uint64 {
 	return 0
@@ -43,6 +46,10 @@ func (e *EIP712) Deduct(ctx context.Context, db chain.Database, amount uint64, t
 
 func (e *EIP712) Refund(ctx context.Context, db chain.Database, amount uint64, tokenID ids.ID) error {
 	return nil
+}
+
+func (e *EIP712) Marshal(p *codec.Packer) {
+
 }
 
 
