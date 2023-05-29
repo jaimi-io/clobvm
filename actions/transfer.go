@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
@@ -14,13 +15,13 @@ import (
 )
 
 type Transfer struct {
-	To crypto.PublicKey
-	TokenID ids.ID
-	Amount uint64
+	To crypto.PublicKey `json:"to"`
+	TokenID ids.ID  	`json:"tokenID"`
+	Amount uint64  	 `json:"amount"`
 }
 
 func (t *Transfer) MaxUnits(r chain.Rules) uint64 {
-	return 0
+	return 1
 }
 
 func (t *Transfer) ValidRange(r chain.Rules) (start int64, end int64) {
@@ -36,7 +37,7 @@ func (t *Transfer) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 }
 
 func (t *Transfer) Fee() (amount int64, tokenID ids.ID) {
-	return 0, t.TokenID
+	return 1, t.TokenID
 }
 
 func (t *Transfer) Execute(
@@ -66,4 +67,12 @@ func (t *Transfer) Marshal(p *codec.Packer) {
 	p.PackPublicKey(t.To)
 	p.PackID(t.TokenID)
 	p.PackUint64(t.Amount)
+}
+
+func UnmarshalTransfer(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
+	var t Transfer
+	p.UnpackPublicKey(false, &t.To) // can transfer to blackhole
+	p.UnpackID(false, &t.TokenID)     // empty ID is the native asset
+	t.Amount = p.UnpackUint64(true)
+	return &t, p.Err()
 }
