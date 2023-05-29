@@ -9,9 +9,11 @@ import (
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/jaimi-io/clobvm/config"
+	"github.com/jaimi-io/clobvm/actions"
+	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/rpc"
+	"github.com/jaimi-io/hypersdk/config"
 
 	"github.com/jaimi-io/hypersdk/builder"
 	"github.com/jaimi-io/hypersdk/chain"
@@ -72,18 +74,46 @@ func (c *Controller) Initialize(
 	// gcfg.VerifyTimeout = c.config.VerifyTimeout
 	gossip := gossiper.NewProposer(inner, gcfg)
 	blockPath, err := utils.InitSubDirectory(snowCtx.ChainDataDir, "block")
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	cfg := pebble.NewDefaultConfig()
 	blockDB, err := pebble.New(blockPath, cfg)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	statePath, err := utils.InitSubDirectory(snowCtx.ChainDataDir, "state")
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	stateDB, err := pebble.New(statePath, cfg)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	apis := map[string]*common.HTTPHandler{}
 	jsonRPCHandler, err := hyperrpc.NewJSONRPCHandler(
 		"clobvm",
 		rpc.New(),
 		common.NoLock,
 	)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
-	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, codec.NewTypeParser[chain.Action, *warp.Message](), codec.NewTypeParser[chain.Auth, *warp.Message](), err
+	actionRegistry := codec.NewTypeParser[chain.Action, *warp.Message]()
+	inner.Logger().Info("Registering actions")
+	err = actionRegistry.Register(&actions.Transfer{}, actions.UnmarshalTransfer, false)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
+	inner.Logger().Info("Registering auth")
+	authRegistry := codec.NewTypeParser[chain.Auth, *warp.Message]()
+	err = authRegistry.Register(&auth.EIP712{}, auth.UnmarshalEIP712, false)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
+	inner.Logger().Info("Returning from controller.Initialize")
+	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, actionRegistry, authRegistry, err
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
