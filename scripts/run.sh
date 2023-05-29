@@ -105,62 +105,62 @@ find /tmp/avalanchego-v${VERSION}
 #   cp ${GENESIS_PATH} /tmp/clobvm.genesis
 # fi
 
-# ############################
+############################
 
-# ############################
+############################
 
-# echo "creating vm config"
-# rm -f /tmp/clobvm.config
-# rm -rf /tmp/clobvm-e2e-profiles
-# cat <<EOF > /tmp/clobvm.config
-# {
-#   "mempoolSize": 10000000,
-#   "mempoolPayerSize": 10000000,
-#   "mempoolExemptPayers":["clob1rvzhmceq997zntgvravfagsks6w0ryud3rylh4cdvayry0dl97nsjzf3yp"],
-#   "parallelism": 5,
-#   "streamingBacklogSize": 10000000,
-#   "gossipMaxSize": 32768,
-#   "gossipProposerDepth": 1,
-#   "buildProposerDiff": 1,
-#   "verifyTimeout": 5,
-#   "trackedPairs":["*"],
-#   "preferredBlocksPerSecond": 3,
-#   "continuousProfilerDir":"/tmp/clobvm-e2e-profiles/*",
-#   "logLevel": "${LOGLEVEL}",
-#   "stateSyncServerDelay": ${STATESYNC_DELAY}
-# }
-# EOF
-# mkdir -p /tmp/clobvm-e2e-profiles
+echo "creating vm config"
+rm -f /tmp/clobvm.config
+rm -rf /tmp/clobvm-e2e-profiles
+cat <<EOF > /tmp/clobvm.config
+{
+  "mempoolSize": 10000000,
+  "mempoolPayerSize": 10000000,
+  "mempoolExemptPayers":["clob1rvzhmceq997zntgvravfagsks6w0ryud3rylh4cdvayry0dl97nsjzf3yp"],
+  "parallelism": 5,
+  "streamingBacklogSize": 10000000,
+  "gossipMaxSize": 32768,
+  "gossipProposerDepth": 1,
+  "buildProposerDiff": 1,
+  "verifyTimeout": 5,
+  "trackedPairs":["*"],
+  "preferredBlocksPerSecond": 3,
+  "continuousProfilerDir":"/tmp/clobvm-e2e-profiles/*",
+  "logLevel": "${LOGLEVEL}",
+  "stateSyncServerDelay": ${STATESYNC_DELAY}
+}
+EOF
+mkdir -p /tmp/clobvm-e2e-profiles
 
-# ############################
+############################
 
-# ############################
+############################
 
-# echo "creating subnet config"
-# rm -f /tmp/clobvm.subnet
-# cat <<EOF > /tmp/clobvm.subnet
-# {
-#   "proposerMinBlockDelay": ${PROPOSER_MIN_BLOCK_DELAY}
-# }
-# EOF
+echo "creating subnet config"
+rm -f /tmp/clobvm.subnet
+cat <<EOF > /tmp/clobvm.subnet
+{
+  "proposerMinBlockDelay": ${PROPOSER_MIN_BLOCK_DELAY}
+}
+EOF
 
-# ############################
+############################
 
-# ############################
-# echo "building e2e.test"
-# # to install the ginkgo binary (required for test build and run)
-# go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.1.4
+############################
+echo "building e2e.test"
+# to install the ginkgo binary (required for test build and run)
+go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.8.1
 
-# # alert the user if they do not have $GOPATH properly configured
-# if ! command -v ginkgo &> /dev/null
-# then
-#     echo -e "\033[0;31myour golang environment is misconfigued...please ensure the golang bin folder is in your PATH\033[0m"
-#     echo -e "\033[0;31myou can set this for the current terminal session by running \"export PATH=\$PATH:\$(go env GOPATH)/bin\"\033[0m"
-#     exit
-# fi
+# alert the user if they do not have $GOPATH properly configured
+if ! command -v ginkgo &> /dev/null
+then
+    echo -e "\033[0;31myour golang environment is misconfigued...please ensure the golang bin folder is in your PATH\033[0m"
+    echo -e "\033[0;31myou can set this for the current terminal session by running \"export PATH=\$PATH:\$(go env GOPATH)/bin\"\033[0m"
+    exit
+fi
 
-# ACK_GINKGO_RC=true ginkgo build ./tests/e2e
-# ./tests/e2e/e2e.test --help
+ACK_GINKGO_RC=true ginkgo build ./tests/e2e
+./tests/e2e/e2e.test --help
 
 #################################
 # download avalanche-network-runner
@@ -212,19 +212,19 @@ function cleanup() {
 }
 trap cleanup EXIT
 
-# echo "running e2e tests"
-# ./tests/e2e/e2e.test \
-# --ginkgo.v \
-# --network-runner-log-level verbo \
-# --network-runner-grpc-endpoint="0.0.0.0:12352" \
-# --network-runner-grpc-gateway-endpoint="0.0.0.0:12353" \
-# --avalanchego-path=${AVALANCHEGO_PATH} \
-# --avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
-# --vm-genesis-path=/tmp/clobvm.genesis \
-# --vm-config-path=/tmp/clobvm.config \
-# --subnet-config-path=/tmp/clobvm.subnet \
-# --output-path=/tmp/avalanchego-v${VERSION}/output.yaml \
-# --mode=${MODE}
+echo "running e2e tests"
+./tests/e2e/e2e.test \
+--ginkgo.v \
+--network-runner-log-level verbo \
+--network-runner-grpc-endpoint="0.0.0.0:12352" \
+--network-runner-grpc-gateway-endpoint="0.0.0.0:12353" \
+--avalanchego-path=${AVALANCHEGO_PATH} \
+--avalanchego-plugin-dir=${AVALANCHEGO_PLUGIN_DIR} \
+--vm-genesis-path=/tmp/clobvm.genesis \
+--vm-config-path=/tmp/clobvm.config \
+--subnet-config-path=/tmp/clobvm.subnet \
+--output-path=/tmp/avalanchego-v${VERSION}/output.yaml \
+--mode=${MODE}
 
 ############################
 if [[ ${MODE} == "run" || ${MODE} == "run-single" ]]; then
