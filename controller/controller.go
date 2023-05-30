@@ -5,15 +5,19 @@ import (
 
 	"github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/engine/common"
+	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/rpc"
+	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/config"
+	"github.com/jaimi-io/hypersdk/crypto"
 
 	"github.com/jaimi-io/hypersdk/builder"
 	"github.com/jaimi-io/hypersdk/chain"
@@ -59,6 +63,7 @@ func (c *Controller) Initialize(
 	chain.AuthRegistry,
 	error,
 ) {
+	c.inner = inner
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
 	c.rules = &genesis.Rules{}
@@ -93,7 +98,7 @@ func (c *Controller) Initialize(
 	apis := map[string]*common.HTTPHandler{}
 	jsonRPCHandler, err := hyperrpc.NewJSONRPCHandler(
 		"clobvm",
-		rpc.New(),
+		rpc.New(c),
 		common.NoLock,
 	)
 	if err != nil {
@@ -134,4 +139,12 @@ func (c *Controller) Rejected(ctx context.Context, blk *chain.StatelessBlock) er
 
 func (c *Controller) Shutdown(context.Context) error {
 	return nil
+}
+
+func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
+	return storage.GetBalance(ctx, c.inner.ReadState, pk, tokenID)
+}
+
+func (c *Controller) Tracer() trace.Tracer {
+	return c.inner.Tracer()
 }

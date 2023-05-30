@@ -4,16 +4,17 @@ import (
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 type JSONRPCServer struct {
-
+	c Controller
 }
 
 const JSONRPCEndpoint = "/clobapi"
 
-func New() *JSONRPCServer {
-	return &JSONRPCServer{}
+func New(c Controller) *JSONRPCServer {
+	return &JSONRPCServer{c}
 }
 
 type BalanceArgs struct {
@@ -26,7 +27,17 @@ type BalanceReply struct {
 }
 
 func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *BalanceReply) error {
-	//address, _ := crypto.ParseAddress("clob", args.Address)
-	reply.Balance = 0
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Balance")
+	defer span.End()
+	
+	address, err := crypto.ParseAddress("clob", args.Address)
+	if err != nil {
+		return err
+	}
+	bal, err := j.c.GetBalance(ctx, address, args.TokenID)
+	if err != nil {
+		return err
+	}
+	reply.Balance = bal
 	return nil
 }
