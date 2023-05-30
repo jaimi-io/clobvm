@@ -35,5 +35,13 @@ func (g *Genesis) Load(ctx context.Context, tracer trace.Tracer, db chain.Databa
 	if err != nil {
 		return err
 	}
+	err = storage.SetBalance(ctx, db, addr, id, 1000000000000)
+	if err != nil {
+		return err
+	}
+	addr, err = crypto.ParseAddress("clob", "clob12l2xyad754fu3s9rqdwq4mkllnl0vc5yerygn2aw5xasmjhzmtwspkx4ek")
+	if err != nil {
+		return err
+	}
 	return storage.SetBalance(ctx, db, addr, id, 1000000000000)
 }
