@@ -74,8 +74,8 @@ go build \
 -o /tmp/avalanchego-v${VERSION}/plugins/kneDvWXFFZ68XzNjnLftBaJ4xARmSPVC4neR8dyR8ERYiKFfe \
 ./cmd/clobvm
 
-# echo "building clob-cli"
-# go build -v -o /tmp/clob-cli ./cmd/clob-cli
+echo "building clob-cli"
+go build -v -o /tmp/clob-cli ./cmd/clob-cli
 
 # log everything in the avalanchego directory
 find /tmp/avalanchego-v${VERSION}
