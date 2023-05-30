@@ -15,7 +15,6 @@ var actionCmd = &cobra.Command{
 	},
 }
 
-
 var transferCmd = &cobra.Command{
 	Use: "transfer",
 	RunE: func(*cobra.Command, []string) error {
@@ -24,7 +23,7 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tokenID, err := promptToken("tokenID", true)
+		tokenID, err := promptToken()
 		if err != nil {
 			return err
 		}
@@ -65,7 +64,6 @@ var transferCmd = &cobra.Command{
 			return err
 		}
 
-		//str, _ := cb58.Encode(tx.Bytes())
 		return nil
 	},
 }

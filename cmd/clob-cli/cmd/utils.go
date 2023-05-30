@@ -2,12 +2,13 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/auth"
+	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	crpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -16,9 +17,9 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func promptID(label string) (ids.ID, error) {
+func promptChainID() (ids.ID, error) {
 	promptText := promptui.Prompt{
-		Label: label,
+		Label: "chainID",
 		Validate: func(input string) error {
 			if len(input) == 0 {
 				return errors.New("ID cannot be empty")
@@ -27,7 +28,13 @@ func promptID(label string) (ids.ID, error) {
 			return err
 		},
 	}
-	rawID, err := promptText.Run()
+	bytes, err := os.ReadFile("/home/jaimip/clobvm/.uri")
+	var rawID string
+	if err == nil && len(bytes) > 0 {
+		rawID = strings.Split(string(bytes), "/")[5]
+	} else {
+		rawID, err = promptText.Run()
+	}
 	if err != nil {
 		return ids.Empty, err
 	}
@@ -56,44 +63,32 @@ func promptString(label string) (string, error) {
 	return strings.TrimSpace(text), err
 }
 
+func promptURI() (string, error) {
+	bytes, err := os.ReadFile("/home/jaimip/clobvm/.uri")
+	var uri string
+	if err == nil && len(bytes) > 0 {
+		uri = strings.TrimSpace(string(bytes))
+	} else {
+		uri, err = promptString("uri")
+	}
+	return uri, err
+}
+
 func defaultActor() (ids.ID, crypto.PrivateKey, *auth.EIP712Factory, *rpc.JSONRPCClient, *crpc.JSONRPCClient, error) {
-	// priv := crypto.PrivateKey(
-	// 	[crypto.PrivateKeyLen]byte{
-	// 		32, 241, 118, 222, 210, 13, 164, 128, 3, 18,
-	// 		109, 215, 176, 215, 168, 171, 194, 181, 4, 11,
-	// 		253, 199, 173, 240, 107, 148, 127, 190, 48, 164,
-	// 		12, 48, 115, 50, 124, 153, 59, 53, 196, 150, 168,
-	// 		143, 151, 235, 222, 128, 136, 161, 9, 40, 139, 85,
-	// 		182, 153, 68, 135, 62, 166, 45, 235, 251, 246, 69, 8,
-	// 	},
-	// )
-	priv, err := crypto.LoadKey("/home/jaimip/clobvm/test.pk")
-	if err != nil {
-		return ids.Empty, crypto.PrivateKey{}, nil, nil, nil, err
-	}
-	chainID, err := promptID("chainID")
-	if err != nil {
-		return ids.Empty, crypto.PrivateKey{}, nil, nil, nil, err
-	}
-	uri, err := promptString("uri")
-	if err != nil {
-		return ids.Empty, crypto.PrivateKey{}, nil, nil, nil, err
-	}
-	return chainID, priv, auth.NewEIP712Factory(
-			priv,
+	return consts.ChainID, consts.PrivKey, auth.NewEIP712Factory(
+			consts.PrivKey,
 		), rpc.NewJSONRPCClient(
-			uri,
+			consts.URI,
 		), crpc.NewRPCClient(
-			uri,
-			chainID,
+			consts.URI,
+			consts.ChainID,
 			genesis.New(),
 		), nil
 }
 
-func promptToken(label string, allowNative bool) (ids.ID, error) {
-	text := fmt.Sprintf("%s", label)
+func promptToken() (ids.ID, error) {
 	promptText := promptui.Prompt{
-		Label: text,
+		Label: "tokenID",
 		Validate: func(input string) error {
 			c := make([]byte, 32)
 			copy(c, []byte(input))
@@ -180,4 +175,3 @@ func promptContinue() (bool, error) {
 	}
 	return true, nil
 }
-

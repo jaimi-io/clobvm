@@ -18,3 +18,7 @@
 *.log
 
 build/
+
+# CLI init files
+.key.pk
+.uri
