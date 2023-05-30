@@ -10,10 +10,8 @@ import (
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
-	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/jaimi-io/clobvm/actions"
-	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/genesis"
+	"github.com/jaimi-io/clobvm/registry"
 	"github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/config"
@@ -21,7 +19,6 @@ import (
 
 	"github.com/jaimi-io/hypersdk/builder"
 	"github.com/jaimi-io/hypersdk/chain"
-	"github.com/jaimi-io/hypersdk/codec"
 	"github.com/jaimi-io/hypersdk/gossiper"
 	"github.com/jaimi-io/hypersdk/pebble"
 	hyperrpc "github.com/jaimi-io/hypersdk/rpc"
@@ -98,27 +95,15 @@ func (c *Controller) Initialize(
 	apis := map[string]*common.HTTPHandler{}
 	jsonRPCHandler, err := hyperrpc.NewJSONRPCHandler(
 		"clobvm",
-		rpc.New(c),
+		rpc.NewRPCServer(c),
 		common.NoLock,
 	)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
-	actionRegistry := codec.NewTypeParser[chain.Action, *warp.Message]()
-	inner.Logger().Info("Registering actions")
-	err = actionRegistry.Register(&actions.Transfer{}, actions.UnmarshalTransfer, false)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
-	}
-	inner.Logger().Info("Registering auth")
-	authRegistry := codec.NewTypeParser[chain.Auth, *warp.Message]()
-	err = authRegistry.Register(&auth.EIP712{}, auth.UnmarshalEIP712, false)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
-	}
 	inner.Logger().Info("Returning from controller.Initialize")
-	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, actionRegistry, authRegistry, err
+	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, err
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
@@ -142,7 +127,7 @@ func (c *Controller) Shutdown(context.Context) error {
 }
 
 func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
-	return storage.GetBalance(ctx, c.inner.ReadState, pk, tokenID)
+	return storage.GetBalanceFromState(ctx, c.inner.ReadState, pk, tokenID)
 }
 
 func (c *Controller) Tracer() trace.Tracer {

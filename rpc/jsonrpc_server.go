@@ -13,7 +13,7 @@ type JSONRPCServer struct {
 
 const JSONRPCEndpoint = "/clobapi"
 
-func New(c Controller) *JSONRPCServer {
+func NewRPCServer(c Controller) *JSONRPCServer {
 	return &JSONRPCServer{c}
 }
 
