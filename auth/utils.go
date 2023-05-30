@@ -7,9 +7,9 @@ import (
 )
 
 func GetUser(auth chain.Auth) crypto.PublicKey {
-	switch auth.(type){
+	switch a := auth.(type){
 	case *EIP712:
-		return crypto.EmptyPublicKey
+		return a.From
 	default:
 		return crypto.EmptyPublicKey
 	}
