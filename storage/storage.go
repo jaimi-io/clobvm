@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
@@ -41,14 +42,14 @@ func innerGetBalance(
 	return binary.BigEndian.Uint64(v), nil
 }
 
-func GetBalance(ctx context.Context, f ReadState, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
+func GetBalanceFromState(ctx context.Context, f ReadState, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
 	key := BalanceKey(pk, tokenID)
 	values, errs := f(ctx, [][]byte{key})
 	bal, err := innerGetBalance(values[0], errs[0])
 	return bal, err
 }
 
-func getBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID) ([]byte, uint64, error) {
+func GetBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID) ([]byte, uint64, error) {
 	key := BalanceKey(pk, tokenID)
 	bal, err := db.GetValue(ctx, key)
 	if errors.Is(err, database.ErrNotFound) {
@@ -58,7 +59,7 @@ func getBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 }
 
 func IncBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) error {
-	key, bal, err := getBalance(ctx, db, pk, tokenID)
+	key, bal, err := GetBalance(ctx, db, pk, tokenID)
 	if err != nil {
 		return err
 	}
@@ -71,13 +72,13 @@ func IncBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 }
 
 func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) error {
-	key, bal, err := getBalance(ctx, db, pk, tokenID)
+	key, bal, err := GetBalance(ctx, db, pk, tokenID)
 	if err != nil {
 		return err
 	}
 	newBal, err := math.Sub(bal, amount)
 	if err != nil {
-		return err
+		return fmt.Errorf("invalid subtract balance (token=%s, bal=%d, addr=%v, amount=%d)", tokenID, bal, crypto.Address("clob", pk), amount)
 	}
 	err = db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, newBal))
 	return err
