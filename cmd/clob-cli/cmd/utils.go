@@ -182,7 +182,7 @@ func promptBool(label string) (bool, error) {
 		Label: fmt.Sprintf("%s (y/n)", label),
 		Validate: func(input string) error {
 			if len(input) == 0 {
-				return errors.New("Bool cannot be empty")
+				return errors.New("Continue cannot be empty")
 			}
 			lower := strings.ToLower(input)
 			if lower == "y" || lower == "n" {
@@ -200,4 +200,27 @@ func promptBool(label string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func promptID(label string) (ids.ID, error) {
+	promptText := promptui.Prompt{
+		Label: label,
+		Validate: func(input string) error {
+			if len(input) == 0 {
+				return errors.New("ID cannot be empty")
+			}
+			_, err := ids.FromString(input)
+			return err
+		},
+	}
+	rawID, err := promptText.Run()
+	if err != nil {
+		return ids.Empty, err
+	}
+	rawID = strings.TrimSpace(rawID)
+	id, err := ids.FromString(rawID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return id, nil
 }

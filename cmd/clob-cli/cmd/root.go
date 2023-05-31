@@ -39,6 +39,7 @@ func init() {
 	actionCmd.AddCommand(
 		transferCmd,
 		addOrderCmd,
+		cancelOrderCmd,
 	)
 }
 

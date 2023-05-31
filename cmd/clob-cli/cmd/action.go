@@ -123,3 +123,47 @@ var addOrderCmd = &cobra.Command{
 		return nil
 	},
 }
+
+var cancelOrderCmd = &cobra.Command{
+	Use: "cancel-order",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, authFactory, cli, tcli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+		tokenID, err := promptToken()
+		if err != nil {
+			return err
+		}
+		
+		orderID, err := promptID("orderID")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := promptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		parser, err := tcli.Parser(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Generate transaction
+		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.CancelOrder{
+			TokenID: tokenID,
+			OrderID: orderID,
+		}, authFactory)
+		if err != nil {
+			return err
+		}
+		if err := submit(ctx); err != nil {
+			return err
+		}
+		return nil
+	},
+}
