@@ -18,5 +18,6 @@ func init() {
 	AuthRegistry = codec.NewTypeParser[chain.Auth, *warp.Message]()
 
 	_ = ActionRegistry.Register(&actions.Transfer{}, actions.UnmarshalTransfer, false)
+	_ = ActionRegistry.Register(&actions.AddOrder{}, actions.UnmarshalAddOrder, false)
 	_ = AuthRegistry.Register(&auth.EIP712{}, auth.UnmarshalEIP712, false)
 }

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
@@ -10,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
+	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/registry"
 	"github.com/jaimi-io/clobvm/rpc"
@@ -28,6 +30,7 @@ import (
 
 type Controller struct {
 	inner *vm.VM
+	orderbook *storage.Orderbook
 
 	snowCtx *snow.Context
 	stateManager *StateManager
@@ -64,6 +67,7 @@ func (c *Controller) Initialize(
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
 	c.rules = &genesis.Rules{}
+	c.orderbook = storage.NewOrderbook()
 	bcfg := builder.DefaultTimeConfig()
 	//bcfg.PreferredBlocksPerSecond = c.config.GetPreferredBlocksPerSecond()
 	build := builder.NewTime(inner, bcfg)
@@ -115,6 +119,19 @@ func (c *Controller) StateManager() chain.StateManager {
 }
 
 func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) error {
+	results := blk.Results()
+	for i, tx := range blk.Txs {
+		result := results[i]
+		if result.Success {
+			switch action := tx.Action.(type) {
+			case *actions.AddOrder:
+				fmt.Println("AddOrder: ", tx.ID())
+				order := storage.NewOrder(tx.ID(), action.Price, action.Quantity)
+				c.orderbook.Add(order, action.Side)
+			}
+		}
+		fmt.Println("Res: ", result, " Tx: ", tx.ID())
+	}
 	return nil
 }
 
@@ -128,6 +145,12 @@ func (c *Controller) Shutdown(context.Context) error {
 
 func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, pk, tokenID)
+}
+
+func (c *Controller) GetOrderbook(ctx context.Context) (string, string, error) {
+	buySide := c.orderbook.GetBuySide()
+	sellSide := c.orderbook.GetSellSide()
+	return fmt.Sprint(buySide), fmt.Sprint(sellSide), nil
 }
 
 func (c *Controller) Tracer() trace.Tracer {
