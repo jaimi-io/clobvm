@@ -15,9 +15,9 @@ import (
 
 type AddOrder struct {
 	TokenID ids.ID  	`json:"tokenID"`
-	Quantity uint64  	 `json:"quantity"`
+	Quantity uint64  	`json:"quantity"`
 	Price uint64  		`json:"price"`
-	Side bool 			`json:"side"`
+	Side bool 			  `json:"side"`
 }
 
 func (ao *AddOrder) MaxUnits(r chain.Rules) uint64 {
@@ -28,10 +28,11 @@ func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (ao *AddOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
+func (ao *AddOrder) StateKeys(cauth chain.Auth, txID ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
 		storage.BalanceKey(user, ao.TokenID),
+		storage.OrderKey(txID),
 	}
 }
 
@@ -54,6 +55,9 @@ func (ao *AddOrder) Execute(
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
 	if err = storage.DecBalance(ctx, db, user, ao.TokenID, ao.Quantity); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
+	if err = storage.SetOrder(ctx, db, txID, ao.Quantity); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
 	return &chain.Result{Success: true, Units: 0}, nil
