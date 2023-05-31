@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/genesis"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
 	"github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/storage"
@@ -30,7 +31,7 @@ import (
 
 type Controller struct {
 	inner *vm.VM
-	orderbook *storage.Orderbook
+	orderbook *orderbook.Orderbook
 
 	snowCtx *snow.Context
 	stateManager *StateManager
@@ -67,7 +68,7 @@ func (c *Controller) Initialize(
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
 	c.rules = &genesis.Rules{}
-	c.orderbook = storage.NewOrderbook()
+	c.orderbook = orderbook.NewOrderbook()
 	bcfg := builder.DefaultTimeConfig()
 	//bcfg.PreferredBlocksPerSecond = c.config.GetPreferredBlocksPerSecond()
 	build := builder.NewTime(inner, bcfg)
@@ -126,8 +127,12 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
 				fmt.Println("AddOrder: ", tx.ID())
-				order := storage.NewOrder(tx.ID(), action.Price, action.Quantity)
-				c.orderbook.Add(order, action.Side)
+				order := orderbook.NewOrder(tx.ID(), action.Price, action.Quantity, action.Side)
+				c.orderbook.Add(order)
+			case *actions.CancelOrder:
+				fmt.Println("CancelOrder: ", tx.ID())
+				order := c.orderbook.Get(action.OrderID)
+				c.orderbook.Remove(order)
 			}
 		}
 		fmt.Println("Res: ", result, " Tx: ", tx.ID())
