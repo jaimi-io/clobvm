@@ -71,7 +71,10 @@ func (ph *PriorityQueueHeap[V, S]) Contains(priority S) bool {
 }
 
 func (ph *PriorityQueueHeap[V, S]) Get(priority S) (*queue.LinkedMapQueue[V, S], *Item[V, S]) {
-	item := ph.hashMap[priority]
+	item, ok := ph.hashMap[priority]
+	if !ok {
+		return nil, nil
+	}
 	return item.Queue, item
 }
 
@@ -98,4 +101,12 @@ func (ph *PriorityQueueHeap[V, S]) Remove(id ids.ID, priority S) error {
 		heap.Remove(ph, item.Index)
 	}
 	return nil
+}
+
+func (ph *PriorityQueueHeap[V, S]) Values() [][]V {
+	values := make([][]V, 0, len(ph.items))
+	for _, item := range ph.items {
+		values = append(values, item.Queue.Values())
+	}
+	return values
 }

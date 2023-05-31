@@ -77,3 +77,11 @@ func (lq *LinkedMapQueue[V, S]) Remove(id ids.ID) error {
 	lq.length--
 	return nil
 }
+
+func (lq *LinkedMapQueue[V, S]) Values() []V {
+	var values []V
+	for item := lq.head; item != nil; item = item.nextItem {
+		values = append(values, item.value)
+	}
+	return values
+}
