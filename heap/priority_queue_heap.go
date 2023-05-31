@@ -9,18 +9,18 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-type Item[V any, S constraints.Ordered] struct {
+type Item[V queue.HasID, S constraints.Ordered] struct {
 	Queue *queue.LinkedMapQueue[V, S]
 	Index int
 }
 
-type PriorityQueueHeap[V any, S constraints.Ordered] struct {
+type PriorityQueueHeap[V queue.HasID, S constraints.Ordered] struct {
 	items []*Item[V, S]
 	hashMap map[S]*Item[V, S]
 	isMinHeap bool
 }
 
-func NewPriorityQueueHeap[V any, S constraints.Ordered](size int, isMinHeap bool) *PriorityQueueHeap[V, S] {
+func NewPriorityQueueHeap[V queue.HasID, S constraints.Ordered](size int, isMinHeap bool) *PriorityQueueHeap[V, S] {
 	ph := &PriorityQueueHeap[V, S]{
 		items: make([]*Item[V, S], 0, size),
 		hashMap: make(map[S]*Item[V, S]),
@@ -93,14 +93,12 @@ func (ph *PriorityQueueHeap[V, S]) Remove(id ids.ID, priority S) error {
 	if lq == nil {
 		return errors.New("PriorityQueueHeap.Remove: priority not found")
 	}
-	err := lq.Remove(id)
-	if err != nil {
-		return err
-	}
-	if lq.Len() == 0 {
+	if lq.Len() == 1 {
 		heap.Remove(ph, item.Index)
+		return nil
 	}
-	return nil
+	err := lq.Remove(id)
+	return err
 }
 
 func (ph *PriorityQueueHeap[V, S]) Values() [][]V {
