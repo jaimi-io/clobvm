@@ -6,7 +6,7 @@ import (
 )
 
 type Item[V any] struct {
-	value *V
+	value V
 	prevItem *Item[V]
 	nextItem *Item[V]
 }
@@ -19,7 +19,7 @@ type LinkedMapQueue[V any, S constraints.Ordered] struct {
 	length int
 }
 
-func NewItem[V any](val *V) *Item[V] {
+func NewItem[V any](val V) *Item[V] {
 	return &Item[V]{
 		value: val,
 		prevItem: nil,
@@ -27,12 +27,12 @@ func NewItem[V any](val *V) *Item[V] {
 	}
 }
 
-func NewLinkedMapQueue[V any,  S constraints.Ordered](val *V, hashMap map[ids.ID]*Item[V], priority S) *LinkedMapQueue[V, S] {
+func NewLinkedMapQueue[V any,  S constraints.Ordered](val V, priority S) *LinkedMapQueue[V, S] {
 	item := NewItem(val)
 	return &LinkedMapQueue[V, S]{
 		head: item,
 		tail: item,
-		hashMap: hashMap,
+		hashMap: make(map[ids.ID]*Item[V]),
 		priority: priority,
 		length: 1,
 	}
@@ -42,7 +42,7 @@ func (lq *LinkedMapQueue[V, S]) Priority() S { return lq.priority }
 
 func (lq *LinkedMapQueue[V, S]) Len() int { return lq.length }
 
-func (lq *LinkedMapQueue[V, S]) Push(val *V, id ids.ID) {
+func (lq *LinkedMapQueue[V, S]) Push(val V, id ids.ID) error {
 	item := &Item[V]{
 		value: val,
 	}
@@ -52,13 +52,14 @@ func (lq *LinkedMapQueue[V, S]) Push(val *V, id ids.ID) {
 	lq.tail = item
 	lq.hashMap[id] = item
 	lq.length++
+	return nil
 }
 
-func (lq *LinkedMapQueue[V, S]) Peek() *V {
+func (lq *LinkedMapQueue[V, S]) Peek() V {
 	return lq.head.value
 }
 
-func (lq *LinkedMapQueue[V, S]) Pop() *V {
+func (lq *LinkedMapQueue[V, S]) Pop() V {
 	nextHead := lq.head.nextItem
 	nextHead.prevItem = nil
 	curHead := lq.head
@@ -67,11 +68,12 @@ func (lq *LinkedMapQueue[V, S]) Pop() *V {
 	return curHead.value
 }
 
-func (lq *LinkedMapQueue[V, S]) Remove(id ids.ID) {
+func (lq *LinkedMapQueue[V, S]) Remove(id ids.ID) error {
 	item := lq.hashMap[id]
 	prevItem := item.prevItem
 	nextItem := item.nextItem
 	prevItem.nextItem = nextItem
 	nextItem.prevItem = prevItem
 	lq.length--
+	return nil
 }
