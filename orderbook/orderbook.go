@@ -1,4 +1,4 @@
-package storage
+package orderbook
 
 import (
 	"fmt"
@@ -11,18 +11,24 @@ type Order struct {
 	ID ids.ID
 	Price uint64
 	Quantity uint64
+	Side bool
 }
 
-func NewOrder (id ids.ID, price uint64, quantity uint64) *Order {
+func (o *Order) GetID() ids.ID {
+	return o.ID
+}
+
+func NewOrder (id ids.ID, price uint64, quantity uint64, side bool) *Order {
 	return &Order{
 		ID: id,
 		Price: price,
 		Quantity: quantity,
+		Side: side,
 	}
 }
 
 func (o *Order) String() string {
-	return fmt.Sprintf("Price: %d, Quantity: %d", o.Price, o.Quantity)
+	return fmt.Sprintf("ID: %s, Price: %d, Quantity: %d", o.ID.String(), o.Price, o.Quantity)
 }
 
 type Orderbook struct {
@@ -42,24 +48,28 @@ func NewOrderbook() *Orderbook {
 	}
 } 
 
-func (ob *Orderbook) Add(order *Order, side bool) {
+func (ob *Orderbook) Add(order *Order) {
 	ob.orderMap[order.ID] = order
 	ob.volumeMap[order.Price] += order.Quantity
-	if side {
+	if order.Side {
 		ob.maxHeap.Add(order, order.ID, order.Price)
 	} else {
 		ob.minHeap.Add(order, order.ID, order.Price)
 	}
 }
 
-func (ob *Orderbook) Remove(order *Order, side bool) {
-	delete(ob.orderMap, order.ID)
+func (ob *Orderbook) Get(id ids.ID) *Order {
+	return ob.orderMap[id]
+}
+
+func (ob *Orderbook) Remove(order *Order) {
 	ob.volumeMap[order.Price] -= order.Quantity
-	if side {
+	if order.Side {
 		ob.maxHeap.Remove(order.ID, order.Price)
 	} else {
 		ob.minHeap.Remove(order.ID, order.Price)
 	}
+	delete(ob.orderMap, order.ID)
 }
 
 func (ob *Orderbook) GetBuySide() [][]*Order {
