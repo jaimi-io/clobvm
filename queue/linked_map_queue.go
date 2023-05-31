@@ -1,17 +1,23 @@
 package queue
 
 import (
+	"errors"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"golang.org/x/exp/constraints"
 )
 
-type Item[V any] struct {
+type HasID interface {
+	GetID() ids.ID
+}
+
+type Item[V HasID] struct {
 	value V
 	prevItem *Item[V]
 	nextItem *Item[V]
 }
 
-type LinkedMapQueue[V any, S constraints.Ordered] struct {
+type LinkedMapQueue[V HasID, S constraints.Ordered] struct {
 	head *Item[V]
 	tail *Item[V]
 	hashMap map[ids.ID]*Item[V]
@@ -19,7 +25,7 @@ type LinkedMapQueue[V any, S constraints.Ordered] struct {
 	length int
 }
 
-func NewItem[V any](val V) *Item[V] {
+func NewItem[V HasID](val V) *Item[V] {
 	return &Item[V]{
 		value: val,
 		prevItem: nil,
@@ -27,12 +33,14 @@ func NewItem[V any](val V) *Item[V] {
 	}
 }
 
-func NewLinkedMapQueue[V any,  S constraints.Ordered](val V, priority S) *LinkedMapQueue[V, S] {
+func NewLinkedMapQueue[V HasID,  S constraints.Ordered](val V, priority S) *LinkedMapQueue[V, S] {
 	item := NewItem(val)
+	hashmap := make(map[ids.ID]*Item[V])
+	hashmap[val.GetID()] = item
 	return &LinkedMapQueue[V, S]{
 		head: item,
 		tail: item,
-		hashMap: make(map[ids.ID]*Item[V]),
+		hashMap: hashmap,
 		priority: priority,
 		length: 1,
 	}
@@ -62,18 +70,39 @@ func (lq *LinkedMapQueue[V, S]) Peek() V {
 func (lq *LinkedMapQueue[V, S]) Pop() V {
 	nextHead := lq.head.nextItem
 	nextHead.prevItem = nil
-	curHead := lq.head
+	prevHead := lq.head
 	lq.head = nextHead
+	res := prevHead.value
+	delete(lq.hashMap, res.GetID())
 	lq.length--
-	return curHead.value
+	return res
+}
+
+func (lq *LinkedMapQueue[V, S]) Contains(id ids.ID) bool {
+	_, ok := lq.hashMap[id]
+	return ok
 }
 
 func (lq *LinkedMapQueue[V, S]) Remove(id ids.ID) error {
 	item := lq.hashMap[id]
+	if item == nil {
+		return errors.New("Item not found")
+	}
 	prevItem := item.prevItem
 	nextItem := item.nextItem
-	prevItem.nextItem = nextItem
-	nextItem.prevItem = prevItem
+
+	if prevItem != nil {
+		prevItem.nextItem = nextItem
+	}
+	if nextItem != nil {
+		nextItem.prevItem = prevItem
+	}
+
+	if item == lq.head {
+		lq.head = nextItem
+	} else if item == lq.tail {
+		lq.tail = prevItem
+	}
 	lq.length--
 	return nil
 }
