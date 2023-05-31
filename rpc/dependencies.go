@@ -10,5 +10,6 @@ import (
 
 type Controller interface {
 	GetBalance(ctx context.Context, address crypto.PublicKey, tokenID ids.ID) (uint64, error)
+	GetOrderbook(ctx context.Context) (string, string, error)
 	Tracer() trace.Tracer
 }

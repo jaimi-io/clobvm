@@ -41,3 +41,17 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	reply.Balance = bal
 	return nil
 }
+
+type AllOrdersArgs struct {}
+type AllOrdersReply struct {
+	BuySide string `json:"buySide"`
+	SellSide string `json:"sellSide"`
+}
+func (j *JSONRPCServer) AllOrders(req *http.Request, args *AllOrdersArgs, reply *AllOrdersReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.AllOrders")
+	defer span.End()
+
+	var err error
+	reply.BuySide, reply.SellSide, err = j.c.GetOrderbook(ctx)
+	return err
+}
