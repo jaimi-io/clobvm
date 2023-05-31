@@ -12,9 +12,12 @@ fi
 # Set default binary directory location
 name="kneDvWXFFZ68XzNjnLftBaJ4xARmSPVC4neR8dyR8ERYiKFfe"
 
-# Build blobvm, which is run as a subprocess
+# Build clobvm, which is run as a subprocess
 mkdir -p ./build
 
 echo "Building clobvm in ./build/$name"
 go build -o ./build/$name ./cmd/clobvm
+
+echo "Building clob-cli in ./build/clob-cli"
+go build -o ./build/clob-cli ./cmd/clob-cli
 
