@@ -35,6 +35,12 @@ func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids
 	return reply.Balance, err
 }
 
+func (j *JSONRPCClient) AllOrders(ctx context.Context) (string, string, error) {
+	args := &AllOrdersArgs{}
+	var reply AllOrdersReply
+	err := j.requester.SendRequest(ctx, "allOrders", args, &reply)
+	return reply.BuySide, reply.SellSide, err
+}
 
 type Parser struct {
 	chainID ids.ID

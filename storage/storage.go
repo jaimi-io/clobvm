@@ -16,10 +16,16 @@ import (
 
 type ReadState func(context.Context, [][]byte) ([][]byte, []error)
 
+var (
+	balancePrefix = byte(0x1)
+	orderPrefix   = byte(0x2)
+)
+
 func BalanceKey(pk crypto.PublicKey, tokenID ids.ID) []byte {
-	key := make([]byte, crypto.PublicKeyLen+consts.IDLen)
-	copy(key[0:crypto.PublicKeyLen], pk[:])
-	copy(key[crypto.PublicKeyLen:crypto.PublicKeyLen+consts.IDLen], tokenID[:])
+	key := make([]byte, 1+crypto.PublicKeyLen+consts.IDLen)
+	key[0] = balancePrefix
+	copy(key[1:1+crypto.PublicKeyLen], pk[:])
+	copy(key[1+crypto.PublicKeyLen:1+crypto.PublicKeyLen+consts.IDLen], tokenID[:])
 	return key
 }
 
@@ -82,4 +88,31 @@ func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 	}
 	err = db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, newBal))
 	return err
+}
+
+func OrderKey(orderID ids.ID) []byte {
+	key := make([]byte, 1+consts.IDLen)
+	key[0] = orderPrefix
+	copy(key[1:1+consts.IDLen], orderID[:])
+	return key
+}
+
+func SetOrder(ctx context.Context, db chain.Database, orderID ids.ID, amount uint64) error{
+	key := OrderKey(orderID)
+	return db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, amount))
+}
+
+func UpdateOrder(ctx context.Context, db chain.Database, orderID ids.ID, amount uint64) error {
+	key := OrderKey(orderID)
+	return db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, amount))
+}
+
+func RemoveOrder(ctx context.Context, db chain.Database, orderID ids.ID) (uint64, error){
+	key := OrderKey(orderID)
+	val, err := db.GetValue(ctx, key)
+	if err != nil {
+		return 0, err
+	}
+	db.Remove(ctx, key)
+	return binary.BigEndian.Uint64(val), nil
 }

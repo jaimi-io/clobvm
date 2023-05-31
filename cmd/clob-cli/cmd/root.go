@@ -19,6 +19,7 @@ func init() {
 	rootCmd.AddCommand(
 		actionCmd,
 		balanceCmd,
+		allOrdersCmd,
 	)
 
 	rootCmd.PersistentPreRunE = func(*cobra.Command, []string) error {
@@ -37,6 +38,8 @@ func init() {
 
 	actionCmd.AddCommand(
 		transferCmd,
+		addOrderCmd,
+		cancelOrderCmd,
 	)
 }
 

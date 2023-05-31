@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -174,4 +175,52 @@ func promptContinue() (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func promptBool(label string) (bool, error) {
+	promptText := promptui.Prompt{
+		Label: fmt.Sprintf("%s (y/n)", label),
+		Validate: func(input string) error {
+			if len(input) == 0 {
+				return errors.New("Continue cannot be empty")
+			}
+			lower := strings.ToLower(input)
+			if lower == "y" || lower == "n" {
+				return nil
+			}
+			return errors.New("Invalid input")
+		},
+	}
+	rawContinue, err := promptText.Run()
+	if err != nil {
+		return false, err
+	}
+	cont := strings.ToLower(rawContinue)
+	if cont == "n" {
+		return false, nil
+	}
+	return true, nil
+}
+
+func promptID(label string) (ids.ID, error) {
+	promptText := promptui.Prompt{
+		Label: label,
+		Validate: func(input string) error {
+			if len(input) == 0 {
+				return errors.New("ID cannot be empty")
+			}
+			_, err := ids.FromString(input)
+			return err
+		},
+	}
+	rawID, err := promptText.Run()
+	if err != nil {
+		return ids.Empty, err
+	}
+	rawID = strings.TrimSpace(rawID)
+	id, err := ids.FromString(rawID)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return id, nil
 }
