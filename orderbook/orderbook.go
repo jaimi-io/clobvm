@@ -51,6 +51,10 @@ func NewOrderbook() *Orderbook {
 func (ob *Orderbook) Add(order *Order) {
 	ob.orderMap[order.ID] = order
 	ob.volumeMap[order.Price] += order.Quantity
+	ob.matchOrder(order)
+	if order.Quantity == 0 {
+		return
+	}
 	if order.Side {
 		ob.maxHeap.Add(order, order.ID, order.Price)
 	} else {
