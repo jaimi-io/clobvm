@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -31,7 +30,6 @@ func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
 		storage.BalanceKey(user, co.TokenID),
-		storage.OrderKey(co.OrderID),
 	}
 }
 
@@ -51,15 +49,10 @@ func (co *CancelOrder) Execute(
 ) (result *chain.Result, err error) {
 	ob := memoryState.(*orderbook.Orderbook)
 	user := auth.GetUser(cauth)
-	fmt.Println("CancelOrder.Execute: user=", user, "co=", co.OrderID.String())
-	remaining, err := storage.RemoveOrder(ctx, db, co.OrderID)
-	if err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
-	if err = storage.IncBalance(ctx, db, user, co.TokenID, remaining); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
 	order := ob.Get(co.OrderID)
+	if err = storage.IncBalance(ctx, db, user, co.TokenID, order.Quantity); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
 	ob.Remove(order)
 	return &chain.Result{Success: true, Units: 0}, nil
 }
