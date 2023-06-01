@@ -33,7 +33,6 @@ func (ao *AddOrder) StateKeys(cauth chain.Auth, txID ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
 		storage.BalanceKey(user, ao.TokenID),
-		storage.OrderKey(txID),
 	}
 }
 
@@ -60,11 +59,14 @@ func (ao *AddOrder) Execute(
 	if err = storage.DecBalance(ctx, db, user, ao.TokenID, ao.Quantity); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-	if err = storage.SetOrder(ctx, db, txID, ao.Quantity); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
 	order := orderbook.NewOrder(txID, ao.Price, ao.Quantity, ao.Side)
-	ob.Add(order)
+	orderStatuses := ob.Add(order)
+	for _, orderStatus := range orderStatuses {
+		// TODO: need address to increment via order statuses
+		if err = storage.IncBalance(ctx, db, user, ao.TokenID, orderStatus.Filled); err != nil {
+			return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		}
+	}
 	return &chain.Result{Success: true, Units: 0}, nil
 }
 
