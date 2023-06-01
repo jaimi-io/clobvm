@@ -77,15 +77,16 @@ var addOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
-		}
+		// baseTokenID, err := promptToken("base")
+		// if err != nil {
+		// 	return err
+		// }
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
-		}
+		// quoteTokenID, err := promptToken("quote")
+		// if err != nil {
+		// 	return err
+		// }
+		baseTokenID, quoteTokenID := getTokens()
 		
 		quantity, err := promptAmount("quantity")
 		if err != nil {
@@ -141,15 +142,16 @@ var cancelOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
-		}
+		// baseTokenID, err := promptToken("base")
+		// if err != nil {
+		// 	return err
+		// }
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
-		}
+		// quoteTokenID, err := promptToken("quote")
+		// if err != nil {
+		// 	return err
+		// }
+		baseTokenID, quoteTokenID := getTokens()
 		
 		orderID, err := promptID("orderID")
 		if err != nil {

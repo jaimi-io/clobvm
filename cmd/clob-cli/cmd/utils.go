@@ -224,3 +224,9 @@ func promptID(label string) (ids.ID, error) {
 	}
 	return id, nil
 }
+
+func getTokens() (ids.ID, ids.ID) {
+	avaxID, _ := ids.FromString("VmwmdfVNQLiP1zJWmhaHipksKBAHmDZH5rZvdfCQfQ9peNx8a")
+	usdcID, _ := ids.FromString("eaX7nEYVKiiFLEvRYQWmHixL9nwC1jFxsa1R75ipEchWBMKiG")
+	return avaxID, usdcID
+}
