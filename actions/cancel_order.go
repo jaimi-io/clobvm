@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -14,8 +15,9 @@ import (
 )
 
 type CancelOrder struct {
-	TokenID ids.ID  	`json:"tokenID"`
-	OrderID ids.ID  	`json:"orderID"`
+	Pair    orderbook.Pair `json:"pair"`
+	OrderID ids.ID  	     `json:"orderID"`
+	Side    bool 			     `json:"side"`
 }
 
 func (co *CancelOrder) MaxUnits(r chain.Rules) uint64 {
@@ -26,15 +28,19 @@ func (co *CancelOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
+func (co *CancelOrder) TokenID() ids.ID {
+	return co.Pair.TokenID(co.Side, true)
+}
+
 func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
-		storage.BalanceKey(user, co.TokenID),
+		storage.BalanceKey(user, co.TokenID()),
 	}
 }
 
 func (co *CancelOrder) Fee() (amount int64, tokenID ids.ID) {
-	return 1, co.TokenID
+	return 1, co.TokenID()
 }
 
 func (co *CancelOrder) Execute(
@@ -50,7 +56,13 @@ func (co *CancelOrder) Execute(
 	ob := memoryState.(*orderbook.Orderbook)
 	user := auth.GetUser(cauth)
 	order := ob.Get(co.OrderID)
-	if err = storage.IncBalance(ctx, db, user, co.TokenID, order.Quantity); err != nil {
+	if order == nil || order.Side != co.Side {
+		err = errors.New("order not found")
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
+
+	getAmount := orderbook.GetAmountFn(order.Side, false)
+	if err = storage.IncBalance(ctx, db, user, co.TokenID(), getAmount(order.Quantity, order.Price)); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
 	ob.Remove(order)
@@ -58,13 +70,17 @@ func (co *CancelOrder) Execute(
 }
 
 func (co *CancelOrder) Marshal(p *codec.Packer) {
-	p.PackID(co.TokenID)
+	p.PackID(co.Pair.BaseTokenID)
+	p.PackID(co.Pair.QuoteTokenID)
 	p.PackID(co.OrderID)
+	p.PackBool(co.Side)
 }
 
 func UnmarshalCancelOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var co CancelOrder
-	p.UnpackID(true, &co.TokenID)
+	p.UnpackID(true, &co.Pair.BaseTokenID)
+	p.UnpackID(true, &co.Pair.QuoteTokenID)
 	p.UnpackID(true, &co.OrderID)
+	co.Side = p.UnpackBool()
 	return &co, p.Err()
 }
