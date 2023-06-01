@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jaimi-io/clobvm/actions"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/spf13/cobra"
 )
 
@@ -23,7 +24,7 @@ var transferCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tokenID, err := promptToken()
+		tokenID, err := promptToken("")
 		if err != nil {
 			return err
 		}
@@ -76,7 +77,12 @@ var addOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tokenID, err := promptToken()
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
 		if err != nil {
 			return err
 		}
@@ -109,7 +115,10 @@ var addOrderCmd = &cobra.Command{
 
 		// Generate transaction
 		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.AddOrder{
-			TokenID: tokenID,
+			Pair: orderbook.Pair{
+				BaseTokenID: baseTokenID,
+				QuoteTokenID: quoteTokenID,
+			},
 			Quantity: quantity,
 			Price: price,
 			Side: side,
@@ -132,12 +141,22 @@ var cancelOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tokenID, err := promptToken()
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
 		if err != nil {
 			return err
 		}
 		
 		orderID, err := promptID("orderID")
+		if err != nil {
+			return err
+		}
+
+		side, err := promptBool("side")
 		if err != nil {
 			return err
 		}
@@ -155,8 +174,12 @@ var cancelOrderCmd = &cobra.Command{
 
 		// Generate transaction
 		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.CancelOrder{
-			TokenID: tokenID,
+			Pair: orderbook.Pair{
+				BaseTokenID: baseTokenID,
+				QuoteTokenID: quoteTokenID,
+			},
 			OrderID: orderID,
+			Side: side,
 		}, authFactory)
 		if err != nil {
 			return err

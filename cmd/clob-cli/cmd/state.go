@@ -20,7 +20,7 @@ var balanceCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tokenID, err := promptToken()
+		tokenID, err := promptToken("")
 		if err != nil {
 			return err
 		}

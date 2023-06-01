@@ -87,9 +87,9 @@ func defaultActor() (ids.ID, crypto.PrivateKey, *auth.EIP712Factory, *rpc.JSONRP
 		), nil
 }
 
-func promptToken() (ids.ID, error) {
+func promptToken(label string) (ids.ID, error) {
 	promptText := promptui.Prompt{
-		Label: "tokenID",
+		Label: fmt.Sprintf("%s tokenID", label),
 		Validate: func(input string) error {
 			c := make([]byte, 32)
 			copy(c, []byte(input))
