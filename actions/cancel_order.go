@@ -54,7 +54,8 @@ func (co *CancelOrder) Execute(
 	warpVerified bool,
 	memoryState any,
 ) (result *chain.Result, err error) {
-	ob := memoryState.(*orderbook.Orderbook)
+	obm := memoryState.(*orderbook.OrderbookManager)
+	ob := obm.GetOrderbook(co.Pair)
 	user := auth.GetUser(cauth)
 	if err = storage.RetrieveFilledBalance(ctx, db, ob, user, co.Pair); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err

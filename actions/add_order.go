@@ -60,7 +60,8 @@ func (ao *AddOrder) Execute(
 	warpVerified bool,
 	memoryState any,
 ) (result *chain.Result, err error) {
-	ob := memoryState.(*orderbook.Orderbook)
+	obm := memoryState.(*orderbook.OrderbookManager)
+	ob := obm.GetOrderbook(ao.Pair)
 	user := auth.GetUser(cauth)
 	if err = storage.RetrieveFilledBalance(ctx, db, ob, user, ao.Pair); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
@@ -73,7 +74,7 @@ func (ao *AddOrder) Execute(
 	if err = storage.DecBalance(ctx, db, user, ao.TokenID(), ao.Amount()); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-	
+
 	order := orderbook.NewOrder(txID, user, ao.Price, ao.Quantity, ao.Side)
 	ob.Add(order)
 	if order.Quantity < ao.Quantity {
