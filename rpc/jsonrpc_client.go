@@ -6,6 +6,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/genesis"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
 
 	"github.com/jaimi-io/hypersdk/chain"
@@ -35,8 +36,10 @@ func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids
 	return reply.Balance, err
 }
 
-func (j *JSONRPCClient) AllOrders(ctx context.Context) (string, string, error) {
-	args := &AllOrdersArgs{}
+func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (string, string, error) {
+	args := &AllOrdersArgs{
+		Pair: pair,
+	}
 	var reply AllOrdersReply
 	err := j.requester.SendRequest(ctx, "allOrders", args, &reply)
 	return reply.BuySide, reply.SellSide, err
