@@ -35,7 +35,8 @@ func (co *CancelOrder) TokenID() ids.ID {
 func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
-		storage.BalanceKey(user, co.TokenID()),
+		storage.BalanceKey(user, co.Pair.BaseTokenID),
+		storage.BalanceKey(user, co.Pair.QuoteTokenID),
 	}
 }
 
@@ -55,6 +56,10 @@ func (co *CancelOrder) Execute(
 ) (result *chain.Result, err error) {
 	ob := memoryState.(*orderbook.Orderbook)
 	user := auth.GetUser(cauth)
+	if err = storage.RetrieveFilledBalance(ctx, db, ob, user, co.Pair); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
+
 	order := ob.Get(co.OrderID)
 	if order == nil || order.Side != co.Side {
 		err = errors.New("order not found")
