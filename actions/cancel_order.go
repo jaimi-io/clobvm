@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/auth"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
@@ -46,7 +47,9 @@ func (co *CancelOrder) Execute(
 	cauth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
+	memoryState any,
 ) (result *chain.Result, err error) {
+	ob := memoryState.(*orderbook.Orderbook)
 	user := auth.GetUser(cauth)
 	fmt.Println("CancelOrder.Execute: user=", user, "co=", co.OrderID.String())
 	remaining, err := storage.RemoveOrder(ctx, db, co.OrderID)
@@ -56,6 +59,8 @@ func (co *CancelOrder) Execute(
 	if err = storage.IncBalance(ctx, db, user, co.TokenID, remaining); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
+	order := ob.Get(co.OrderID)
+	ob.Remove(order)
 	return &chain.Result{Success: true, Units: 0}, nil
 }
 

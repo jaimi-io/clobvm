@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/auth"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
@@ -48,7 +49,9 @@ func (ao *AddOrder) Execute(
 	cauth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
+	memoryState any,
 ) (result *chain.Result, err error) {
+	ob := memoryState.(*orderbook.Orderbook)
 	user := auth.GetUser(cauth)
 	if ao.Quantity == 0 {
 		err = errors.New("amount cannot be zero")
@@ -60,6 +63,8 @@ func (ao *AddOrder) Execute(
 	if err = storage.SetOrder(ctx, db, txID, ao.Quantity); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
+	order := orderbook.NewOrder(txID, ao.Price, ao.Quantity, ao.Side)
+	ob.Add(order)
 	return &chain.Result{Success: true, Units: 0}, nil
 }
 

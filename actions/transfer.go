@@ -48,6 +48,7 @@ func (t *Transfer) Execute(
 	cauth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
+	memoryState any,
 ) (result *chain.Result, err error) {
 	user := auth.GetUser(cauth)
 	if t.Amount == 0 {
