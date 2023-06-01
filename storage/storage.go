@@ -57,11 +57,8 @@ func GetBalanceFromState(ctx context.Context, f ReadState, pk crypto.PublicKey, 
 
 func GetBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID) ([]byte, uint64, error) {
 	key := BalanceKey(pk, tokenID)
-	bal, err := db.GetValue(ctx, key)
-	if errors.Is(err, database.ErrNotFound) {
-		return key, 0, nil
-	}
-	return key, binary.BigEndian.Uint64(bal), err
+	bal, err := innerGetBalance(db.GetValue(ctx, key))
+	return key, bal, err
 }
 
 func IncBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) error {
