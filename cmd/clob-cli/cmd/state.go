@@ -45,8 +45,8 @@ var allOrdersCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("buy side: %s\n", buySide)
 		fmt.Printf("sell side: %s\n", sellSide)
+		fmt.Printf("buy side: %s\n", buySide)
 		return nil
 	},
 }

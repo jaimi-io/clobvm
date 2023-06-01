@@ -11,7 +11,6 @@ import (
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
-	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
@@ -62,6 +61,7 @@ func (c *Controller) Initialize(
 	vm.Handlers,
 	chain.ActionRegistry,
 	chain.AuthRegistry,
+	any,
 	error,
 ) {
 	c.inner = inner
@@ -82,20 +82,20 @@ func (c *Controller) Initialize(
 	gossip := gossiper.NewProposer(inner, gcfg)
 	blockPath, err := utils.InitSubDirectory(snowCtx.ChainDataDir, "block")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	cfg := pebble.NewDefaultConfig()
 	blockDB, err := pebble.New(blockPath, cfg)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	statePath, err := utils.InitSubDirectory(snowCtx.ChainDataDir, "state")
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	stateDB, err := pebble.New(statePath, cfg)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	apis := map[string]*common.HTTPHandler{}
 	jsonRPCHandler, err := hyperrpc.NewJSONRPCHandler(
@@ -104,11 +104,11 @@ func (c *Controller) Initialize(
 		common.NoLock,
 	)
 	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
 	inner.Logger().Info("Returning from controller.Initialize")
-	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, err
+	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbook, err
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
@@ -120,23 +120,6 @@ func (c *Controller) StateManager() chain.StateManager {
 }
 
 func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) error {
-	results := blk.Results()
-	for i, tx := range blk.Txs {
-		result := results[i]
-		if result.Success {
-			switch action := tx.Action.(type) {
-			case *actions.AddOrder:
-				fmt.Println("AddOrder: ", tx.ID())
-				order := orderbook.NewOrder(tx.ID(), action.Price, action.Quantity, action.Side)
-				c.orderbook.Add(order)
-			case *actions.CancelOrder:
-				fmt.Println("CancelOrder: ", tx.ID())
-				order := c.orderbook.Get(action.OrderID)
-				c.orderbook.Remove(order)
-			}
-		}
-		fmt.Println("Res: ", result, " Tx: ", tx.ID())
-	}
 	return nil
 }
 

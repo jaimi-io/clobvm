@@ -5,22 +5,25 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 type Order struct {
-	ID ids.ID
-	Price uint64
-	Quantity uint64
-	Side bool
+	ID        ids.ID
+	User      crypto.PublicKey
+	Price     uint64
+	Quantity  uint64
+	Side      bool
 }
 
 func (o *Order) GetID() ids.ID {
 	return o.ID
 }
 
-func NewOrder (id ids.ID, price uint64, quantity uint64, side bool) *Order {
+func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, side bool) *Order {
 	return &Order{
 		ID: id,
+		User: user,
 		Price: price,
 		Quantity: quantity,
 		Side: side,
@@ -48,14 +51,19 @@ func NewOrderbook() *Orderbook {
 	}
 } 
 
-func (ob *Orderbook) Add(order *Order) {
+func (ob *Orderbook) Add(order *Order) []*OrderStatus {
 	ob.orderMap[order.ID] = order
+	orderStatuses := ob.matchOrder(order)
+	if order.Quantity == 0 {
+		return orderStatuses
+	}
 	ob.volumeMap[order.Price] += order.Quantity
 	if order.Side {
 		ob.maxHeap.Add(order, order.ID, order.Price)
 	} else {
 		ob.minHeap.Add(order, order.ID, order.Price)
 	}
+	return orderStatuses
 }
 
 func (ob *Orderbook) Get(id ids.ID) *Order {

@@ -69,7 +69,9 @@ func (lq *LinkedMapQueue[V, S]) Peek() V {
 
 func (lq *LinkedMapQueue[V, S]) Pop() V {
 	nextHead := lq.head.nextItem
-	nextHead.prevItem = nil
+	if nextHead != nil {
+		nextHead.prevItem = nil
+	}
 	prevHead := lq.head
 	lq.head = nextHead
 	res := prevHead.value

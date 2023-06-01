@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/auth"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
@@ -32,7 +33,6 @@ func (ao *AddOrder) StateKeys(cauth chain.Auth, txID ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
 		storage.BalanceKey(user, ao.TokenID),
-		storage.OrderKey(txID),
 	}
 }
 
@@ -48,7 +48,9 @@ func (ao *AddOrder) Execute(
 	cauth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
+	memoryState any,
 ) (result *chain.Result, err error) {
+	ob := memoryState.(*orderbook.Orderbook)
 	user := auth.GetUser(cauth)
 	if ao.Quantity == 0 {
 		err = errors.New("amount cannot be zero")
@@ -57,8 +59,12 @@ func (ao *AddOrder) Execute(
 	if err = storage.DecBalance(ctx, db, user, ao.TokenID, ao.Quantity); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-	if err = storage.SetOrder(ctx, db, txID, ao.Quantity); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	order := orderbook.NewOrder(txID, user, ao.Price, ao.Quantity, ao.Side)
+	orderStatuses := ob.Add(order)
+	for _, orderStatus := range orderStatuses {
+		if err = storage.IncBalance(ctx, db, orderStatus.User, ao.TokenID, orderStatus.Filled); err != nil {
+			return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		}
 	}
 	return &chain.Result{Success: true, Units: 0}, nil
 }
