@@ -30,10 +30,10 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 type OrderStatus struct {
 	ID     ids.ID
 	User   crypto.PublicKey
-	Filled uint64
+	Amount uint64
 }
 
-func (ob *Orderbook) matchOrder(order *Order) []*OrderStatus {
+func (ob *Orderbook) matchOrder(order *Order) ([]*OrderStatus, int) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -41,7 +41,11 @@ func (ob *Orderbook) matchOrder(order *Order) []*OrderStatus {
 		heap = ob.maxHeap
 	}
 	matchPriceFn := getMatchPriceFn(order.Side)
-	var orderStatuses []*OrderStatus
+	getAmount := GetAmountFn(order.Side, false)
+	// TODO: max fills constant + throw error if exceeded?
+	// TODO: group amounts by user
+	orderStatuses := make([]*OrderStatus, 1024)
+	matchIndex := 0
 	initialQuantity := order.Quantity
 
 	for heap.Len() > 0 && matchPriceFn(heap.Peek().Priority(), order.Price) && 0 < order.Quantity {
@@ -55,7 +59,11 @@ func (ob *Orderbook) matchOrder(order *Order) []*OrderStatus {
 			if takerOrder.Quantity == 0 {
 				queue.Pop()
 			}
-			orderStatuses = append(orderStatuses, &OrderStatus{takerOrder.ID, takerOrder.User, toFill})
+			orderStatuses[matchIndex] = &OrderStatus{takerOrder.ID, takerOrder.User, getAmount(toFill, takerOrder.Price)}
+			matchIndex++
+			if matchIndex == 1024 {
+				return orderStatuses, -1
+			}
 		}
 		if queue.Len() == 0 {
 			heap.Pop()
@@ -65,5 +73,5 @@ func (ob *Orderbook) matchOrder(order *Order) []*OrderStatus {
 	if order.Quantity <= initialQuantity {
 		orderStatuses = append(orderStatuses, &OrderStatus{order.ID, order.User, initialQuantity - order.Quantity})
 	}
-	return orderStatuses
+	return orderStatuses, matchIndex
 }

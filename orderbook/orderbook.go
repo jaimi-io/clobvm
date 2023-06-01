@@ -51,19 +51,18 @@ func NewOrderbook() *Orderbook {
 	}
 } 
 
-func (ob *Orderbook) Add(order *Order) []*OrderStatus {
+func (ob *Orderbook) Add(order *Order) ([]*OrderStatus, int) {
 	ob.orderMap[order.ID] = order
-	orderStatuses := ob.matchOrder(order)
-	if order.Quantity == 0 {
-		return orderStatuses
+	orderStatuses, numFills := ob.matchOrder(order)
+	if order.Quantity > 0 {
+		ob.volumeMap[order.Price] += order.Quantity
+		if order.Side {
+			ob.maxHeap.Add(order, order.ID, order.Price)
+		} else {
+			ob.minHeap.Add(order, order.ID, order.Price)
+		}
 	}
-	ob.volumeMap[order.Price] += order.Quantity
-	if order.Side {
-		ob.maxHeap.Add(order, order.ID, order.Price)
-	} else {
-		ob.minHeap.Add(order, order.ID, order.Price)
-	}
-	return orderStatuses
+	return orderStatuses, numFills
 }
 
 func (ob *Orderbook) Get(id ids.ID) *Order {
