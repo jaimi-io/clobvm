@@ -3,6 +3,7 @@ package orderbook
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 func min(a, b uint64) uint64 {
@@ -27,7 +28,8 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 }
 
 type OrderStatus struct {
-	ID ids.ID
+	ID     ids.ID
+	User   crypto.PublicKey
 	Filled uint64
 }
 
@@ -53,7 +55,7 @@ func (ob *Orderbook) matchOrder(order *Order) []*OrderStatus {
 			if takerOrder.Quantity == 0 {
 				queue.Pop()
 			}
-			orderStatuses = append(orderStatuses, &OrderStatus{takerOrder.ID, toFill})
+			orderStatuses = append(orderStatuses, &OrderStatus{takerOrder.ID, takerOrder.User, toFill})
 		}
 		if queue.Len() == 0 {
 			heap.Pop()
@@ -61,7 +63,7 @@ func (ob *Orderbook) matchOrder(order *Order) []*OrderStatus {
 	}
 	// i.e. a fill has occurred for this order
 	if order.Quantity <= initialQuantity {
-		orderStatuses = append(orderStatuses, &OrderStatus{order.ID, initialQuantity - order.Quantity})
+		orderStatuses = append(orderStatuses, &OrderStatus{order.ID, order.User, initialQuantity - order.Quantity})
 	}
 	return orderStatuses
 }

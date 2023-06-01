@@ -59,11 +59,10 @@ func (ao *AddOrder) Execute(
 	if err = storage.DecBalance(ctx, db, user, ao.TokenID, ao.Quantity); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-	order := orderbook.NewOrder(txID, ao.Price, ao.Quantity, ao.Side)
+	order := orderbook.NewOrder(txID, user, ao.Price, ao.Quantity, ao.Side)
 	orderStatuses := ob.Add(order)
 	for _, orderStatus := range orderStatuses {
-		// TODO: need address to increment via order statuses
-		if err = storage.IncBalance(ctx, db, user, ao.TokenID, orderStatus.Filled); err != nil {
+		if err = storage.IncBalance(ctx, db, orderStatus.User, ao.TokenID, orderStatus.Filled); err != nil {
 			return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 		}
 	}
