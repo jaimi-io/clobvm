@@ -30,7 +30,7 @@ import (
 
 type Controller struct {
 	inner *vm.VM
-	orderbook *orderbook.Orderbook
+	orderbookManager *orderbook.OrderbookManager
 
 	snowCtx *snow.Context
 	stateManager *StateManager
@@ -68,7 +68,7 @@ func (c *Controller) Initialize(
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
 	c.rules = &genesis.Rules{}
-	c.orderbook = orderbook.NewOrderbook()
+	c.orderbookManager = orderbook.NewOrderbookManager()
 	bcfg := builder.DefaultTimeConfig()
 	//bcfg.PreferredBlocksPerSecond = c.config.GetPreferredBlocksPerSecond()
 	build := builder.NewTime(inner, bcfg)
@@ -108,7 +108,7 @@ func (c *Controller) Initialize(
 	}
 	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
 	inner.Logger().Info("Returning from controller.Initialize")
-	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbook, err
+	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
@@ -135,9 +135,10 @@ func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenI
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, pk, tokenID)
 }
 
-func (c *Controller) GetOrderbook(ctx context.Context) (string, string, error) {
-	buySide := c.orderbook.GetBuySide()
-	sellSide := c.orderbook.GetSellSide()
+func (c *Controller) GetOrderbook(ctx context.Context, pair orderbook.Pair) (string, string, error) {
+	ob := c.orderbookManager.GetOrderbook(pair)
+	buySide := ob.GetBuySide()
+	sellSide := ob.GetSellSide()
 	return fmt.Sprint(buySide), fmt.Sprint(sellSide), nil
 }
 

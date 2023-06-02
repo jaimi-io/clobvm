@@ -9,6 +9,7 @@ import (
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/math"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/consts"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -57,11 +58,8 @@ func GetBalanceFromState(ctx context.Context, f ReadState, pk crypto.PublicKey, 
 
 func GetBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID) ([]byte, uint64, error) {
 	key := BalanceKey(pk, tokenID)
-	bal, err := db.GetValue(ctx, key)
-	if errors.Is(err, database.ErrNotFound) {
-		return key, 0, nil
-	}
-	return key, binary.BigEndian.Uint64(bal), err
+	bal, err := innerGetBalance(db.GetValue(ctx, key))
+	return key, bal, err
 }
 
 func IncBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) error {
@@ -90,29 +88,20 @@ func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 	return err
 }
 
-func OrderKey(orderID ids.ID) []byte {
-	key := make([]byte, 1+consts.IDLen)
-	key[0] = orderPrefix
-	copy(key[1:1+consts.IDLen], orderID[:])
-	return key
-}
-
-func SetOrder(ctx context.Context, db chain.Database, orderID ids.ID, amount uint64) error{
-	key := OrderKey(orderID)
-	return db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, amount))
-}
-
-func UpdateOrder(ctx context.Context, db chain.Database, orderID ids.ID, amount uint64) error {
-	key := OrderKey(orderID)
-	return db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, amount))
-}
-
-func RemoveOrder(ctx context.Context, db chain.Database, orderID ids.ID) (uint64, error){
-	key := OrderKey(orderID)
-	val, err := db.GetValue(ctx, key)
-	if err != nil {
-		return 0, err
+func RetrieveFilledBalance(ctx context.Context, db chain.Database, ob *orderbook.Orderbook, pk crypto.PublicKey, pair orderbook.Pair) error {
+	baseAmt, quoteAmt := ob.GetFilled(pk)
+	if baseAmt > 0 {
+		err := IncBalance(ctx, db, pk, pair.BaseTokenID, baseAmt)
+		if err != nil {
+			return err
+		}
 	}
-	db.Remove(ctx, key)
-	return binary.BigEndian.Uint64(val), nil
+	if quoteAmt > 0 {
+		err := IncBalance(ctx, db, pk, pair.QuoteTokenID, quoteAmt)
+		if err != nil {
+			return err
+		}
+	}
+	ob.RemoveFilled(pk)
+	return nil
 }

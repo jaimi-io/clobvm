@@ -40,6 +40,9 @@ type Orderbook struct {
 
 	orderMap map[ids.ID]*Order
 	volumeMap map[uint64]uint64
+
+	filledBuys map[crypto.PublicKey]uint64
+	filledSells map[crypto.PublicKey]uint64
 }
 
 func NewOrderbook() *Orderbook {
@@ -48,22 +51,22 @@ func NewOrderbook() *Orderbook {
 		maxHeap: heap.NewPriorityQueueHeap[*Order, uint64](1024, false),
 		orderMap: make(map[ids.ID]*Order),
 		volumeMap: make(map[uint64]uint64),
+		filledBuys: make(map[crypto.PublicKey]uint64),
+		filledSells: make(map[crypto.PublicKey]uint64),
 	}
 } 
 
-func (ob *Orderbook) Add(order *Order) []*OrderStatus {
+func (ob *Orderbook) Add(order *Order) {
 	ob.orderMap[order.ID] = order
-	orderStatuses := ob.matchOrder(order)
-	if order.Quantity == 0 {
-		return orderStatuses
+	ob.matchOrder(order)
+	if order.Quantity > 0 {
+		ob.volumeMap[order.Price] += order.Quantity
+		if order.Side {
+			ob.maxHeap.Add(order, order.ID, order.Price)
+		} else {
+			ob.minHeap.Add(order, order.ID, order.Price)
+		}
 	}
-	ob.volumeMap[order.Price] += order.Quantity
-	if order.Side {
-		ob.maxHeap.Add(order, order.ID, order.Price)
-	} else {
-		ob.minHeap.Add(order, order.ID, order.Price)
-	}
-	return orderStatuses
 }
 
 func (ob *Orderbook) Get(id ids.ID) *Order {
@@ -78,6 +81,15 @@ func (ob *Orderbook) Remove(order *Order) {
 		ob.minHeap.Remove(order.ID, order.Price)
 	}
 	delete(ob.orderMap, order.ID)
+}
+
+func (ob *Orderbook) GetFilled(user crypto.PublicKey) (uint64, uint64) {
+	return ob.filledBuys[user], ob.filledSells[user]
+}
+
+func (ob *Orderbook) RemoveFilled(user crypto.PublicKey) {
+	delete(ob.filledBuys, user)
+	delete(ob.filledSells, user)
 }
 
 func (ob *Orderbook) GetBuySide() [][]*Order {

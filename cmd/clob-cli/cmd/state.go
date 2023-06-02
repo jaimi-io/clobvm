@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/hypersdk/crypto"
 	"github.com/spf13/cobra"
 )
@@ -20,7 +21,7 @@ var balanceCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		tokenID, err := promptToken()
+		tokenID, err := promptToken("")
 		if err != nil {
 			return err
 		}
@@ -41,7 +42,11 @@ var allOrdersCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		buySide, sellSide, err := cli.AllOrders(ctx)
+
+		baseTokenID, quoteTokenID := getTokens()
+		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
+		
+		buySide, sellSide, err := cli.AllOrders(ctx, pair)
 		if err != nil {
 			return err
 		}

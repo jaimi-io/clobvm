@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
@@ -42,9 +43,11 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	return nil
 }
 
-type AllOrdersArgs struct {}
+type AllOrdersArgs struct {
+	Pair orderbook.Pair `json:"pair"`
+}
 type AllOrdersReply struct {
-	BuySide string `json:"buySide"`
+	BuySide  string `json:"buySide"`
 	SellSide string `json:"sellSide"`
 }
 func (j *JSONRPCServer) AllOrders(req *http.Request, args *AllOrdersArgs, reply *AllOrdersReply) error {
@@ -52,6 +55,6 @@ func (j *JSONRPCServer) AllOrders(req *http.Request, args *AllOrdersArgs, reply 
 	defer span.End()
 
 	var err error
-	reply.BuySide, reply.SellSide, err = j.c.GetOrderbook(ctx)
+	reply.BuySide, reply.SellSide, err = j.c.GetOrderbook(ctx, args.Pair)
 	return err
 }
