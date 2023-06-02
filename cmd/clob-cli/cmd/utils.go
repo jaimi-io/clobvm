@@ -35,10 +35,10 @@ func promptChainID() (ids.ID, error) {
 			return err
 		},
 	}
-	bytes, err := os.ReadFile("/home/jaimip/clobvm/.uri")
+	var err error
 	var rawID string
-	if err == nil && len(bytes) > 0 {
-		rawID = strings.Split(string(bytes), "/")[5]
+	if len(consts.URI) > 0 {
+		rawID = strings.Split(consts.URI, "/")[5]
 	} else {
 		rawID, err = promptText.Run()
 	}
@@ -70,15 +70,17 @@ func promptString(label string) (string, error) {
 	return strings.TrimSpace(text), err
 }
 
-func promptURI() (string, error) {
+func promptURIs() (string, []string, error) {
 	bytes, err := os.ReadFile("/home/jaimip/clobvm/.uri")
 	var uri string
+	var uris []string
 	if err == nil && len(bytes) > 0 {
-		uri = strings.TrimSpace(string(bytes))
+		uris = strings.Split(strings.TrimSpace(string(bytes)), "\n")
+		uri = uris[0]
 	} else {
 		uri, err = promptString("uri")
 	}
-	return uri, err
+	return uri, uris, err
 }
 
 func defaultActor() (ids.ID, crypto.PrivateKey, *auth.EIP712Factory, *rpc.JSONRPCClient, *crpc.JSONRPCClient, error) {

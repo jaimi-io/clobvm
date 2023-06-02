@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
 	"github.com/jaimi-io/hypersdk/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -46,13 +47,7 @@ var generatePrometheusCmd = &cobra.Command{
 			return err
 		}
 
-		uris := []string{
-			"http://127.0.0.1:60622/ext/bc/S9sfqYbsvpoRx2Sr4aAk3XkJESWrTVVau4kEALBj6CFrtmuMb",
-			"http://127.0.0.1:51007/ext/bc/S9sfqYbsvpoRx2Sr4aAk3XkJESWrTVVau4kEALBj6CFrtmuMb",
-			"http://127.0.0.1:23667/ext/bc/S9sfqYbsvpoRx2Sr4aAk3XkJESWrTVVau4kEALBj6CFrtmuMb",
-			"http://127.0.0.1:27671/ext/bc/S9sfqYbsvpoRx2Sr4aAk3XkJESWrTVVau4kEALBj6CFrtmuMb",
-			"http://127.0.0.1:43548/ext/bc/S9sfqYbsvpoRx2Sr4aAk3XkJESWrTVVau4kEALBj6CFrtmuMb",
-		}
+		uris := consts.URIS
 		endpoints := make([]string, len(uris))
 		for i, uri := range uris {
 			host, err := utils.GetHost(uri)

@@ -10,4 +10,5 @@ var (
 	ChainID ids.ID
 	PrivKey crypto.PrivateKey
 	URI string
+	URIS []string
 )

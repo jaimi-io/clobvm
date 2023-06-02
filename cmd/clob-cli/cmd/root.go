@@ -30,11 +30,11 @@ func init() {
 		if err != nil {
 			return err
 		}
-		consts.ChainID, err = promptChainID()
+		consts.URI, consts.URIS, err = promptURIs()
 		if err != nil {
 			return err
 		}
-		consts.URI, err = promptURI()
+		consts.ChainID, err = promptChainID()
 		return err
 	}
 
@@ -49,7 +49,8 @@ func init() {
 	)
 
 	spamCmd.AddCommand(
-		runSpamCmd,
+		transferSpamCmd,
+		orderSpamCmd,
 	)
 }
 
