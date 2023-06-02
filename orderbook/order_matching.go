@@ -43,6 +43,7 @@ func (ob *Orderbook) matchOrder(order *Order) {
 	}
 	matchPriceFn := getMatchPriceFn(order.Side)
 	getAmount := GetAmountFn(!order.Side, false)
+	prevQuantity := order.Quantity
 
 	for heap.Len() > 0 && matchPriceFn(heap.Peek().Priority(), order.Price) && 0 < order.Quantity {
 		queue := heap.Peek()
@@ -55,6 +56,7 @@ func (ob *Orderbook) matchOrder(order *Order) {
 			if takerOrder.Quantity == 0 {
 				queue.Pop()
 			}
+			// TODO: avg price for the order that gets added
 			ob.addToFilled(takerOrder.Side, takerOrder.User, getAmount(toFill, takerOrder.Price))
 		}
 
@@ -62,4 +64,9 @@ func (ob *Orderbook) matchOrder(order *Order) {
 			heap.Pop()
 		}
 	}
+	if prevQuantity > order.Quantity {
+		getAmount := GetAmountFn(order.Side, false)
+		// TODO: avg price for the order that gets added
+		ob.addToFilled(order.Side, order.User, getAmount(prevQuantity - order.Quantity, order.Price))
+	} 
 }
