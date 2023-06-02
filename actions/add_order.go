@@ -74,18 +74,6 @@ func (ao *AddOrder) Execute(
 	if err = storage.DecBalance(ctx, db, user, ao.TokenID(), ao.Amount()); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-
-	order := orderbook.NewOrder(txID, user, ao.Price, ao.Quantity, ao.Side)
-	ob.Add(order)
-	if order.Quantity < ao.Quantity {
-		getAmount := orderbook.GetAmountFn(order.Side, false)
-		filled := ao.Quantity - order.Quantity
-		amount := getAmount(filled, order.Price)
-		oppTokenID := ao.Pair.TokenID(ao.Side, false)
-		if err = storage.IncBalance(ctx, db, user, oppTokenID, amount); err != nil {
-			return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-		}
-	}
 	return &chain.Result{Success: true, Units: 0}, nil
 }
 

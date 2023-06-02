@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -61,17 +60,6 @@ func (co *CancelOrder) Execute(
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
 
-	order := ob.Get(co.OrderID)
-	if order == nil || order.Side != co.Side {
-		err = errors.New("order not found")
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
-
-	getAmount := orderbook.GetAmountFn(order.Side, false)
-	if err = storage.IncBalance(ctx, db, user, co.TokenID(), getAmount(order.Quantity, order.Price)); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
-	ob.Remove(order)
 	return &chain.Result{Success: true, Units: 0}, nil
 }
 

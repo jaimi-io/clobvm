@@ -11,6 +11,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow/engine/common"
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
+	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
@@ -120,6 +121,25 @@ func (c *Controller) StateManager() chain.StateManager {
 }
 
 func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) error {
+	results := blk.Results()
+	for i, tx := range blk.Txs {
+		result := results[i]
+		if result.Success {
+			switch action := tx.Action.(type) {
+			case *actions.AddOrder:
+				fmt.Println("AddOrder: ", tx.ID())
+				addr := crypto.PublicKey([]byte(tx.Payer()))
+				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
+				c.orderbookManager.GetOrderbook(action.Pair).Add(order)
+			case *actions.CancelOrder:
+				fmt.Println("CancelOrder: ", tx.ID())
+				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
+				order := orderbook.Get(action.OrderID)
+				orderbook.Remove(order)
+			}
+		}
+		fmt.Println("Res: ", result, " Tx: ", tx.ID())
+	}
 	return nil
 }
 
