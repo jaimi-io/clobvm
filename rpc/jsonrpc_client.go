@@ -55,7 +55,7 @@ func (p *Parser) ChainID() ids.ID {
 }
 
 func (p *Parser) Rules(t int64) chain.Rules {
-	return &genesis.Rules{}
+	return p.genesis.GetRules()
 }
 
 func (*Parser) Registry() (chain.ActionRegistry, chain.AuthRegistry) {

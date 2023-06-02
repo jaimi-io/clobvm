@@ -14,15 +14,15 @@ func (c *Config) GetTraceConfig() *trace.Config {
 }
 
 func (c *Config) GetParallelism() int {
-	return 0
+	return 5
 }
 
 func (c *Config) GetMempoolSize() int {
-	return 0
+	return 10000000
 }
 
 func (c *Config) GetMempoolPayerSize() int {
-	return 0
+	return 10000000
 }
 
 func (c *Config) GetMempoolExemptPayers() [][]byte {
@@ -34,7 +34,7 @@ func (c *Config) GetMempoolVerifyBalances() bool {
 }
 
 func (c *Config) GetStreamingBacklogSize() int {
-	return 0
+	return 10000000
 }
 
 func (c *Config) GetStateHistoryLength() int {

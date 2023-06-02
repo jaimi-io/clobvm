@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/jaimi-io/hypersdk/builder"
 	"github.com/jaimi-io/hypersdk/chain"
+	"github.com/jaimi-io/hypersdk/consts"
 	"github.com/jaimi-io/hypersdk/gossiper"
 	"github.com/jaimi-io/hypersdk/pebble"
 	hyperrpc "github.com/jaimi-io/hypersdk/rpc"
@@ -68,18 +70,19 @@ func (c *Controller) Initialize(
 	c.inner = inner
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
-	c.rules = &genesis.Rules{}
+	gen := genesis.New()
+	c.rules = gen.GetRules()
 	c.orderbookManager = orderbook.NewOrderbookManager()
 	bcfg := builder.DefaultTimeConfig()
-	//bcfg.PreferredBlocksPerSecond = c.config.GetPreferredBlocksPerSecond()
+	bcfg.PreferredBlocksPerSecond = 3
 	build := builder.NewTime(inner, bcfg)
 	gcfg := gossiper.DefaultProposerConfig()
-	// gcfg.GossipInterval = c.config.GossipInterval
-	// gcfg.GossipMaxSize = c.config.GossipMaxSize
-	// gcfg.GossipProposerDiff = c.config.GossipProposerDiff
-	// gcfg.GossipProposerDepth = c.config.GossipProposerDepth
-	// gcfg.BuildProposerDiff = c.config.BuildProposerDiff
-	// gcfg.VerifyTimeout = c.config.VerifyTimeout
+	gcfg.GossipInterval = 1 * time.Second
+	gcfg.GossipMaxSize = consts.NetworkSizeLimit
+	gcfg.GossipProposerDiff = 3
+	gcfg.GossipProposerDepth = 1
+	gcfg.BuildProposerDiff = 1
+	gcfg.VerifyTimeout = 5
 	gossip := gossiper.NewProposer(inner, gcfg)
 	blockPath, err := utils.InitSubDirectory(snowCtx.ChainDataDir, "block")
 	if err != nil {
@@ -109,7 +112,7 @@ func (c *Controller) Initialize(
 	}
 	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
 	inner.Logger().Info("Returning from controller.Initialize")
-	return c.config, genesis.New(), build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
+	return c.config, gen, build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
@@ -135,7 +138,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
 				order := orderbook.Get(action.OrderID)
-				orderbook.Remove(order)
+				orderbook.Cancel(order)
 			}
 		}
 		fmt.Println("Res: ", result, " Tx: ", tx.ID())
