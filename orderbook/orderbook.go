@@ -73,7 +73,7 @@ func (ob *Orderbook) Get(id ids.ID) *Order {
 	return ob.orderMap[id]
 }
 
-func (ob *Orderbook) Remove(order *Order) {
+func (ob *Orderbook) Cancel(order *Order) {
 	ob.volumeMap[order.Price] -= order.Quantity
 	if order.Side {
 		ob.maxHeap.Remove(order.ID, order.Price)
