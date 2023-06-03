@@ -10,6 +10,7 @@ import (
 	"github.com/jaimi-io/clobvm/registry"
 
 	"github.com/jaimi-io/hypersdk/chain"
+	"github.com/jaimi-io/hypersdk/crypto"
 	"github.com/jaimi-io/hypersdk/requester"
 )
 
@@ -45,6 +46,17 @@ func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (str
 	return reply.BuySide, reply.SellSide, err
 }
 
+func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64, error) {
+	args := &PendingFundsArgs{
+		User:        user,
+		TokenID:     tokenID,
+		BlockHeight: blockHeight,
+	}
+	var reply PendingFundsReply
+	err := j.requester.SendRequest(ctx, "pendingFunds", args, &reply)
+	return reply.Balance, reply.BlockHeight, err
+}
+
 type Parser struct {
 	chainID ids.ID
 	genesis *genesis.Genesis
@@ -55,7 +67,7 @@ func (p *Parser) ChainID() ids.ID {
 }
 
 func (p *Parser) Rules(t int64) chain.Rules {
-	return &genesis.Rules{}
+	return p.genesis.GetRules()
 }
 
 func (*Parser) Registry() (chain.ActionRegistry, chain.AuthRegistry) {

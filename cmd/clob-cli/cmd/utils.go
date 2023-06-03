@@ -1,20 +1,26 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	crpc "github.com/jaimi-io/clobvm/rpc"
+	trpc "github.com/jaimi-io/clobvm/rpc"
+	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/crypto"
 	"github.com/jaimi-io/hypersdk/rpc"
 	"github.com/jaimi-io/hypersdk/utils"
+	hutils "github.com/jaimi-io/hypersdk/utils"
 	"github.com/manifoldco/promptui"
 )
 
@@ -29,10 +35,10 @@ func promptChainID() (ids.ID, error) {
 			return err
 		},
 	}
-	bytes, err := os.ReadFile("/home/jaimip/clobvm/.uri")
+	var err error
 	var rawID string
-	if err == nil && len(bytes) > 0 {
-		rawID = strings.Split(string(bytes), "/")[5]
+	if len(consts.URI) > 0 {
+		rawID = strings.Split(consts.URI, "/")[5]
 	} else {
 		rawID, err = promptText.Run()
 	}
@@ -64,15 +70,17 @@ func promptString(label string) (string, error) {
 	return strings.TrimSpace(text), err
 }
 
-func promptURI() (string, error) {
+func promptURIs() (string, []string, error) {
 	bytes, err := os.ReadFile("/home/jaimip/clobvm/.uri")
 	var uri string
+	var uris []string
 	if err == nil && len(bytes) > 0 {
-		uri = strings.TrimSpace(string(bytes))
+		uris = strings.Split(strings.TrimSpace(string(bytes)), "\n")
+		uri = uris[0]
 	} else {
 		uri, err = promptString("uri")
 	}
-	return uri, err
+	return uri, uris, err
 }
 
 func defaultActor() (ids.ID, crypto.PrivateKey, *auth.EIP712Factory, *rpc.JSONRPCClient, *crpc.JSONRPCClient, error) {
@@ -225,8 +233,92 @@ func promptID(label string) (ids.ID, error) {
 	return id, nil
 }
 
+func promptInt(
+	label string,
+) (int, error) {
+	promptText := promptui.Prompt{
+		Label: label,
+		Validate: func(input string) error {
+			if len(input) == 0 {
+				return errors.New("Amount cannot be empty")
+			}
+			amount, err := strconv.Atoi(input)
+			if err != nil {
+				return err
+			}
+			if amount <= 0 {
+				return fmt.Errorf("%d must be > 0", amount)
+			}
+			return nil
+		},
+	}
+	rawAmount, err := promptText.Run()
+	if err != nil {
+		return 0, err
+	}
+	rawAmount = strings.TrimSpace(rawAmount)
+	return strconv.Atoi(rawAmount)
+}
+
 func getTokens() (ids.ID, ids.ID) {
 	avaxID, _ := ids.FromString("VmwmdfVNQLiP1zJWmhaHipksKBAHmDZH5rZvdfCQfQ9peNx8a")
 	usdcID, _ := ids.FromString("eaX7nEYVKiiFLEvRYQWmHixL9nwC1jFxsa1R75ipEchWBMKiG")
 	return avaxID, usdcID
+}
+
+func submitDummy(
+	ctx context.Context,
+	cli *rpc.JSONRPCClient,
+	tcli *trpc.JSONRPCClient,
+	dest crypto.PublicKey,
+	factory chain.AuthFactory,
+) error {
+	var (
+		logEmitted bool
+		txsSent    uint64
+	)
+	for ctx.Err() == nil {
+		_, h, t, err := cli.Accepted(ctx)
+		if err != nil {
+			return err
+		}
+		dummyBlockAgeThreshold := int64(25)
+		dummyHeightThreshold   := uint64(3)
+		underHeight := h < dummyHeightThreshold
+		if underHeight || time.Now().Unix()-t > dummyBlockAgeThreshold {
+			if underHeight && !logEmitted {
+				hutils.Outf(
+					"{{yellow}}waiting for snowman++ activation (needed for AWM)...{{/}}\n",
+				)
+				logEmitted = true
+			}
+			parser, err := tcli.Parser(ctx)
+			if err != nil {
+				return err
+			}
+			avaxID, _ := getTokens()
+			submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.Transfer{
+				To:    dest,
+				TokenID: avaxID,
+				Amount: txsSent + 1, // prevent duplicate txs
+			}, factory)
+			if err != nil {
+				return err
+			}
+			if err := submit(ctx); err != nil {
+				return err
+			}
+			// if _, err := tcli.WaitForTransaction(ctx, tx.ID()); err != nil {
+			// 	return err
+			// }
+			txsSent++
+			time.Sleep(750 * time.Millisecond)
+			continue
+		}
+		if logEmitted {
+			hutils.Outf("{{yellow}}snowman++ activated{{/}}\n")
+		}
+		return nil
+	}
+	return ctx.Err()
 }

@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"errors"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
@@ -28,10 +27,6 @@ func (co *CancelOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (co *CancelOrder) TokenID() ids.ID {
-	return co.Pair.TokenID(co.Side, true)
-}
-
 func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
@@ -41,7 +36,7 @@ func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 }
 
 func (co *CancelOrder) Fee() (amount int64, tokenID ids.ID) {
-	return 1, co.TokenID()
+	return 1, co.Pair.TokenID(co.Side)
 }
 
 func (co *CancelOrder) Execute(
@@ -53,25 +48,16 @@ func (co *CancelOrder) Execute(
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
+	blockHeight uint64,
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
-	ob := obm.GetOrderbook(co.Pair)
 	user := auth.GetUser(cauth)
-	if err = storage.RetrieveFilledBalance(ctx, db, ob, user, co.Pair); err != nil {
+	if err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.BaseTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-
-	order := ob.Get(co.OrderID)
-	if order == nil || order.Side != co.Side {
-		err = errors.New("order not found")
+	if err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.QuoteTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-
-	getAmount := orderbook.GetAmountFn(order.Side, false)
-	if err = storage.IncBalance(ctx, db, user, co.TokenID(), getAmount(order.Quantity, order.Price)); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
-	ob.Remove(order)
 	return &chain.Result{Success: true, Units: 0}, nil
 }
 

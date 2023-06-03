@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/auth"
+	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
@@ -49,8 +50,13 @@ func (t *Transfer) Execute(
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
+	blockHeight uint64,
 ) (result *chain.Result, err error) {
 	user := auth.GetUser(cauth)
+	obm := memoryState.(*orderbook.OrderbookManager)
+	if err = storage.PullPendingBalance(ctx, db, obm, user, t.TokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
 	if t.Amount == 0 {
 		err = errors.New("amount cannot be zero")
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err

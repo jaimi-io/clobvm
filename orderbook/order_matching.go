@@ -1,9 +1,17 @@
 package orderbook
 
 import (
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
+
+func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64, ids.ID) {
+	if side && !isFilled || !side && isFilled {
+		return func(q, p uint64) (uint64, ids.ID) { return q * p, pair.QuoteTokenID }
+	}
+	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
+}
 
 func min(a, b uint64) uint64 {
 	if a < b {
@@ -26,15 +34,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) addToFilled(side bool, user crypto.PublicKey, amount uint64) {
-	if side {
-		ob.filledBuys[user] += amount
-	} else {
-		ob.filledSells[user] += amount
-	}
-}
-
-func (ob *Orderbook) matchOrder(order *Order) {
+func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -42,7 +42,8 @@ func (ob *Orderbook) matchOrder(order *Order) {
 		heap = ob.maxHeap
 	}
 	matchPriceFn := getMatchPriceFn(order.Side)
-	getAmount := GetAmountFn(!order.Side, false)
+	prevQuantity := order.Quantity
+	isFilled := true
 
 	for heap.Len() > 0 && matchPriceFn(heap.Peek().Priority(), order.Price) && 0 < order.Quantity {
 		queue := heap.Peek()
@@ -53,13 +54,29 @@ func (ob *Orderbook) matchOrder(order *Order) {
 			order.Quantity -= toFill
 			ob.volumeMap[order.Price] -= toFill
 			if takerOrder.Quantity == 0 {
-				queue.Pop()
+				ob.Remove(queue.Pop())
 			}
-			ob.addToFilled(takerOrder.Side, takerOrder.User, getAmount(toFill, takerOrder.Price))
+			// TODO: avg price for the order that gets added
+			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
 		}
 
 		if queue.Len() == 0 {
 			heap.Pop()
 		}
 	}
+	if prevQuantity > order.Quantity {
+		ob.toPendingAmount(order, prevQuantity - order.Quantity, isFilled, pendingAmounts)
+	} 
+}
+
+type PendingAmt struct {
+	User    crypto.PublicKey
+	TokenID ids.ID
+	Amount  uint64
+}
+
+func (ob *Orderbook) toPendingAmount(order *Order, quantity uint64, isFilled bool, pendingAmounts *[]PendingAmt) {
+	getAmount := GetAmountFn(order.Side, isFilled, ob.pair)
+	amount, tokenID := getAmount(quantity, order.Price)
+	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, amount})
 }

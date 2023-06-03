@@ -29,12 +29,9 @@ func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (ao *AddOrder) TokenID() ids.ID {
-	return ao.Pair.TokenID(ao.Side, true)
-}
-
-func (ao *AddOrder) Amount() uint64 {
-	getAmount := orderbook.GetAmountFn(ao.Side, true)
+func (ao *AddOrder) amount() (uint64, ids.ID) {
+	isFilled := false
+	getAmount := orderbook.GetAmountFn(ao.Side, isFilled, ao.Pair)
 	return getAmount(ao.Quantity, ao.Price)
 }
 
@@ -47,7 +44,8 @@ func (ao *AddOrder) StateKeys(cauth chain.Auth, txID ids.ID) [][]byte {
 }
 
 func (ao *AddOrder) Fee() (amount int64, tokenID ids.ID) {
-	return 1, ao.TokenID()
+	_, tokenID = ao.amount()
+	return 1, tokenID
 }
 
 func (ao *AddOrder) Execute(
@@ -59,11 +57,14 @@ func (ao *AddOrder) Execute(
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
+	blockHeight uint64,
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
-	ob := obm.GetOrderbook(ao.Pair)
 	user := auth.GetUser(cauth)
-	if err = storage.RetrieveFilledBalance(ctx, db, ob, user, ao.Pair); err != nil {
+	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
+	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
 
@@ -71,20 +72,9 @@ func (ao *AddOrder) Execute(
 		err = errors.New("amount cannot be zero")
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
-	if err = storage.DecBalance(ctx, db, user, ao.TokenID(), ao.Amount()); err != nil {
+	amount, tokenID := ao.amount()
+	if err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-	}
-
-	order := orderbook.NewOrder(txID, user, ao.Price, ao.Quantity, ao.Side)
-	ob.Add(order)
-	if order.Quantity < ao.Quantity {
-		getAmount := orderbook.GetAmountFn(order.Side, false)
-		filled := ao.Quantity - order.Quantity
-		amount := getAmount(filled, order.Price)
-		oppTokenID := ao.Pair.TokenID(ao.Side, false)
-		if err = storage.IncBalance(ctx, db, user, oppTokenID, amount); err != nil {
-			return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
-		}
 	}
 	return &chain.Result{Success: true, Units: 0}, nil
 }

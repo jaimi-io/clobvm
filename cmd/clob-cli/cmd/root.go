@@ -20,6 +20,9 @@ func init() {
 		actionCmd,
 		balanceCmd,
 		allOrdersCmd,
+		prometheusCmd,
+		spamCmd,
+		pendingFundsCmd,
 	)
 
 	rootCmd.PersistentPreRunE = func(*cobra.Command, []string) error {
@@ -28,11 +31,11 @@ func init() {
 		if err != nil {
 			return err
 		}
-		consts.ChainID, err = promptChainID()
+		consts.URI, consts.URIS, err = promptURIs()
 		if err != nil {
 			return err
 		}
-		consts.URI, err = promptURI()
+		consts.ChainID, err = promptChainID()
 		return err
 	}
 
@@ -40,6 +43,15 @@ func init() {
 		transferCmd,
 		addOrderCmd,
 		cancelOrderCmd,
+	)
+
+	prometheusCmd.AddCommand(
+		generatePrometheusCmd,
+	)
+
+	spamCmd.AddCommand(
+		transferSpamCmd,
+		orderSpamCmd,
 	)
 }
 
