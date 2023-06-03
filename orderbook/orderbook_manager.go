@@ -7,12 +7,14 @@ import (
 
 type OrderbookManager struct{
 	orderbooks map[Pair]*Orderbook
+	pairs []Pair
 	pendingFunds map[crypto.PublicKey]map[ids.ID]*VersionedBalance
 }
 
 func NewOrderbookManager() *OrderbookManager {
 	return &OrderbookManager{
 		orderbooks: make(map[Pair]*Orderbook),
+		pairs: make([]Pair, 0),
 		pendingFunds: make(map[crypto.PublicKey]map[ids.ID]*VersionedBalance),
 	}
 }
@@ -23,6 +25,7 @@ func (obm *OrderbookManager) GetOrderbook(pair Pair) *Orderbook {
 	}
 	ob := NewOrderbook(pair)
 	obm.orderbooks[pair] = ob
+	obm.pairs = append(obm.pairs, pair)
 	return ob
 }
 
