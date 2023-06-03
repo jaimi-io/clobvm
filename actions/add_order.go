@@ -59,11 +59,14 @@ func (ao *AddOrder) Execute(
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
+	blockHeight uint64,
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
-	ob := obm.GetOrderbook(ao.Pair)
 	user := auth.GetUser(cauth)
-	if err = storage.RetrieveFilledBalance(ctx, db, ob, user, ao.Pair); err != nil {
+	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+	}
+	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
 	}
 
