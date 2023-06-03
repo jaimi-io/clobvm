@@ -125,6 +125,8 @@ func (c *Controller) StateManager() chain.StateManager {
 
 func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) error {
 	results := blk.Results()
+	var pendingAmounts []orderbook.PendingAmt
+	pendingAmtPtr := &pendingAmounts
 	for i, tx := range blk.Txs {
 		result := results[i]
 		if result.Success {
@@ -133,15 +135,38 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				fmt.Println("AddOrder: ", tx.ID())
 				addr := crypto.PublicKey([]byte(tx.Payer()))
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
-				c.orderbookManager.GetOrderbook(action.Pair).Add(order)
+				var tokenID, oppTokenID ids.ID
+				if action.Side {
+					tokenID = action.Pair.QuoteTokenID
+					oppTokenID = action.Pair.BaseTokenID
+				} else {
+					tokenID = action.Pair.BaseTokenID
+					oppTokenID = action.Pair.QuoteTokenID
+				}
+				ob := c.orderbookManager.GetOrderbook(action.Pair)
+				ob.Add(order, tokenID, oppTokenID, pendingAmtPtr)
 			case *actions.CancelOrder:
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
 				order := orderbook.Get(action.OrderID)
-				orderbook.Cancel(order)
+				orderbook.Cancel(order, action.TokenID(), pendingAmtPtr)
 			}
 		}
 		fmt.Println("Res: ", result, " Tx: ", tx.ID())
+	}
+
+	fundsPerUser := make(map[crypto.PublicKey]map[ids.ID]uint64)
+	for _, pendingAmt := range pendingAmounts {
+		if _, ok := fundsPerUser[pendingAmt.User]; !ok {
+			fundsPerUser[pendingAmt.User] = make(map[ids.ID]uint64)
+		}
+		fundsPerUser[pendingAmt.User][pendingAmt.TokenID] += pendingAmt.Amount
+	}
+
+	for user, tokenBalances := range fundsPerUser {
+		for tokenID, balance := range tokenBalances {
+			c.orderbookManager.AddPendingFunds(user, tokenID, balance, blk.Hght)
+		}
 	}
 	return nil
 }
