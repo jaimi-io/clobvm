@@ -65,8 +65,7 @@ func (ob *Orderbook) Add(order *Order, tokenID ids.ID, oppTokenID ids.ID, pendin
 }
 
 func (ob *Orderbook) Get(id ids.ID) *Order {
-	order := ob.orderMap[id]
-	return order
+	return ob.orderMap[id]
 }
 
 func (ob *Orderbook) Cancel(order *Order, tokenID ids.ID, pendingAmounts *[]PendingAmt) {

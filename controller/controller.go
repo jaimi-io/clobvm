@@ -149,7 +149,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
 				order := orderbook.Get(action.OrderID)
-				orderbook.Cancel(order, action.TokenID(), pendingAmtPtr)
+				if order != nil {
+					orderbook.Cancel(order, action.TokenID(), pendingAmtPtr)
+				}
 			}
 		}
 		fmt.Println("Res: ", result, " Tx: ", tx.ID())
