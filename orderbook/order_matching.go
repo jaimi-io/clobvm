@@ -61,7 +61,7 @@ func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 		}
 
 		if queue.Len() == 0 {
-			heap.Pop()
+			heap.PopQueue()
 		}
 	}
 	if prevQuantity > order.Quantity {
