@@ -88,20 +88,13 @@ func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 	return err
 }
 
-func RetrieveFilledBalance(ctx context.Context, db chain.Database, ob *orderbook.Orderbook, pk crypto.PublicKey, pair orderbook.Pair) error {
-	baseAmt, quoteAmt := ob.GetFilled(pk)
-	if baseAmt > 0 {
-		err := IncBalance(ctx, db, pk, pair.BaseTokenID, baseAmt)
+func PullPendingBalance(ctx context.Context, db chain.Database, obm *orderbook.OrderbookManager, pk crypto.PublicKey, tokenID ids.ID, blockHeight uint64) error {
+	amount := obm.GetPendingFunds(pk, tokenID, blockHeight)
+	if amount > 0 {
+		err := IncBalance(ctx, db, pk, tokenID, amount)
 		if err != nil {
 			return err
 		}
 	}
-	if quoteAmt > 0 {
-		err := IncBalance(ctx, db, pk, pair.QuoteTokenID, quoteAmt)
-		if err != nil {
-			return err
-		}
-	}
-	ob.RemoveFilled(pk)
 	return nil
 }
