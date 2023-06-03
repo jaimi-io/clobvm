@@ -1,0 +1,29 @@
+package orderbook
+
+import (
+	"github.com/ava-labs/avalanchego/ids"
+)
+
+func (ob *Orderbook) AddToEviction(orderID ids.ID, blockExpiry uint64) {
+	if _, ok := ob.evictionMap[blockExpiry]; !ok {
+		ob.evictionMap[blockExpiry] = make(map[ids.ID]struct{})
+	}
+	ob.evictionMap[blockExpiry][orderID] = struct{}{}
+}
+
+func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt) {
+	ordersToEvict := ob.evictionMap[blockNumber]
+	if ordersToEvict == nil {
+		return
+	}
+	var i int;
+	for orderID := range ordersToEvict {
+		order := ob.Get(orderID)
+		if order == nil {
+			continue
+		}
+		i++;
+		ob.Cancel(order, pendingAmounts)
+	}
+	delete(ob.evictionMap, blockNumber)
+}

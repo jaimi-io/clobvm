@@ -41,6 +41,7 @@ type Orderbook struct {
 
 	orderMap map[ids.ID]*Order
 	volumeMap map[uint64]uint64
+	evictionMap map[uint64]map[ids.ID]struct{}
 }
 
 func NewOrderbook(pair Pair) *Orderbook {
@@ -50,14 +51,16 @@ func NewOrderbook(pair Pair) *Orderbook {
 		maxHeap: heap.NewPriorityQueueHeap[*Order, uint64](1024, false),
 		orderMap: make(map[ids.ID]*Order),
 		volumeMap: make(map[uint64]uint64),
+		evictionMap: make(map[uint64]map[ids.ID]struct{}),
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) Add(order *Order, blockExpiry uint64, pendingAmounts *[]PendingAmt) {
 	ob.matchOrder(order, pendingAmounts)
 	if order.Quantity > 0 {
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order
+		ob.AddToEviction(order.ID, blockExpiry)
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
 		} else {
