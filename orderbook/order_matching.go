@@ -1,6 +1,9 @@
 package orderbook
 
 import (
+	"fmt"
+
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
@@ -26,15 +29,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) addToFilled(side bool, user crypto.PublicKey, amount uint64) {
-	if side {
-		ob.filledBuys[user] += amount
-	} else {
-		ob.filledSells[user] += amount
-	}
-}
-
-func (ob *Orderbook) matchOrder(order *Order) {
+func (ob *Orderbook) matchOrder(order *Order, tokenID ids.ID, oppTokenID ids.ID, pendingAmounts *[]PendingAmt) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -42,7 +37,6 @@ func (ob *Orderbook) matchOrder(order *Order) {
 		heap = ob.maxHeap
 	}
 	matchPriceFn := getMatchPriceFn(order.Side)
-	getAmount := GetAmountFn(!order.Side, false)
 	prevQuantity := order.Quantity
 
 	for heap.Len() > 0 && matchPriceFn(heap.Peek().Priority(), order.Price) && 0 < order.Quantity {
@@ -54,10 +48,10 @@ func (ob *Orderbook) matchOrder(order *Order) {
 			order.Quantity -= toFill
 			ob.volumeMap[order.Price] -= toFill
 			if takerOrder.Quantity == 0 {
-				queue.Pop()
+				ob.Remove(queue.Pop())
 			}
 			// TODO: avg price for the order that gets added
-			ob.addToFilled(takerOrder.Side, takerOrder.User, getAmount(toFill, takerOrder.Price))
+			ob.toPendingAmount(takerOrder, oppTokenID, pendingAmounts)
 		}
 
 		if queue.Len() == 0 {
@@ -65,8 +59,19 @@ func (ob *Orderbook) matchOrder(order *Order) {
 		}
 	}
 	if prevQuantity > order.Quantity {
-		getAmount := GetAmountFn(order.Side, false)
-		// TODO: avg price for the order that gets added
-		ob.addToFilled(order.Side, order.User, getAmount(prevQuantity - order.Quantity, order.Price))
+		ob.toPendingAmount(order, tokenID, pendingAmounts)
 	} 
+}
+
+type PendingAmt struct {
+	User    crypto.PublicKey
+	TokenID ids.ID
+	Amount  uint64
+}
+
+func (ob *Orderbook) toPendingAmount(order *Order, tokenID ids.ID, pendingAmounts *[]PendingAmt) {
+	getAmount := GetAmountFn(order.Side, false)
+	fmt.Println("toPendingAmount.append:")
+	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, getAmount(order.Quantity, order.Price)})
+	fmt.Println("length of pendingAmounts:", len(*pendingAmounts))
 }
