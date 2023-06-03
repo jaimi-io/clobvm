@@ -27,3 +27,10 @@ func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt) {
 	}
 	delete(ob.evictionMap, blockNumber)
 }
+
+func (obm *OrderbookManager) EvictAllPairs(blockNumber uint64, pendingAmounts *[]PendingAmt) {
+	for _, pair := range obm.pairs {
+		ob := obm.orderbooks[pair]
+		ob.Evict(blockNumber, pendingAmounts)
+	}
+}

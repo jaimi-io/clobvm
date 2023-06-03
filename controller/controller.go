@@ -127,6 +127,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	results := blk.Results()
 	var pendingAmounts []orderbook.PendingAmt
 	pendingAmtPtr := &pendingAmounts
+
+	c.orderbookManager.EvictAllPairs(blk.Hght, pendingAmtPtr)
+
 	for i, tx := range blk.Txs {
 		result := results[i]
 		if result.Success {
@@ -136,7 +139,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				addr := crypto.PublicKey([]byte(tx.Payer()))
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, pendingAmtPtr)
+				ob.Add(order, blk.Hght+10, pendingAmtPtr)
 			case *actions.CancelOrder:
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
