@@ -89,7 +89,7 @@ func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 }
 
 func PullPendingBalance(ctx context.Context, db chain.Database, obm *orderbook.OrderbookManager, pk crypto.PublicKey, tokenID ids.ID, blockHeight uint64) error {
-	amount := obm.GetPendingFunds(pk, tokenID, blockHeight)
+	amount := obm.PullPendingFunds(pk, tokenID, blockHeight)
 	if amount > 0 {
 		err := IncBalance(ctx, db, pk, tokenID, amount)
 		if err != nil {
