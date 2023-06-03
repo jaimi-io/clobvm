@@ -34,7 +34,8 @@ func (ao *AddOrder) TokenID() ids.ID {
 }
 
 func (ao *AddOrder) Amount() uint64 {
-	getAmount := orderbook.GetAmountFn(ao.Side, true)
+	isFilled := false
+	getAmount := orderbook.GetAmountFn(ao.Side, isFilled)
 	return getAmount(ao.Quantity, ao.Price)
 }
 

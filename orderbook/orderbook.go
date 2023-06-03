@@ -52,10 +52,10 @@ func NewOrderbook() *Orderbook {
 }
 
 func (ob *Orderbook) Add(order *Order, tokenID ids.ID, oppTokenID ids.ID, pendingAmounts *[]PendingAmt) {
-	ob.orderMap[order.ID] = order
 	ob.matchOrder(order, tokenID, oppTokenID, pendingAmounts)
 	if order.Quantity > 0 {
 		ob.volumeMap[order.Price] += order.Quantity
+		ob.orderMap[order.ID] = order
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
 		} else {
@@ -77,7 +77,8 @@ func (ob *Orderbook) Cancel(order *Order, tokenID ids.ID, pendingAmounts *[]Pend
 		ob.minHeap.Remove(order.ID, order.Price)
 	}
 	delete(ob.orderMap, order.ID)
-	ob.toPendingAmount(order, tokenID, pendingAmounts)
+	isFilled := false
+	ob.toPendingAmount(order, tokenID, order.Quantity, isFilled, pendingAmounts)
 }
 
 func (ob *Orderbook) Remove(order *Order) {
