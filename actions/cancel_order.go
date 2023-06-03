@@ -27,10 +27,6 @@ func (co *CancelOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (co *CancelOrder) TokenID() ids.ID {
-	return co.Pair.TokenID(co.Side, true)
-}
-
 func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 	user := auth.GetUser(cauth)
 	return [][]byte{
@@ -40,7 +36,7 @@ func (co *CancelOrder) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
 }
 
 func (co *CancelOrder) Fee() (amount int64, tokenID ids.ID) {
-	return 1, co.TokenID()
+	return 1, co.Pair.TokenID(co.Side)
 }
 
 func (co *CancelOrder) Execute(

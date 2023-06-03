@@ -35,6 +35,7 @@ func (o *Order) String() string {
 }
 
 type Orderbook struct {
+	pair Pair
 	minHeap *heap.PriorityQueueHeap[*Order, uint64]
 	maxHeap *heap.PriorityQueueHeap[*Order, uint64]
 
@@ -42,8 +43,9 @@ type Orderbook struct {
 	volumeMap map[uint64]uint64
 }
 
-func NewOrderbook() *Orderbook {
+func NewOrderbook(pair Pair) *Orderbook {
 	return &Orderbook{
+		pair: pair,
 		minHeap: heap.NewPriorityQueueHeap[*Order, uint64](1024, true),
 		maxHeap: heap.NewPriorityQueueHeap[*Order, uint64](1024, false),
 		orderMap: make(map[ids.ID]*Order),
@@ -51,8 +53,8 @@ func NewOrderbook() *Orderbook {
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, tokenID ids.ID, oppTokenID ids.ID, pendingAmounts *[]PendingAmt) {
-	ob.matchOrder(order, tokenID, oppTokenID, pendingAmounts)
+func (ob *Orderbook) Add(order *Order, pendingAmounts *[]PendingAmt) {
+	ob.matchOrder(order, pendingAmounts)
 	if order.Quantity > 0 {
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order
@@ -68,7 +70,7 @@ func (ob *Orderbook) Get(id ids.ID) *Order {
 	return ob.orderMap[id]
 }
 
-func (ob *Orderbook) Cancel(order *Order, tokenID ids.ID, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) Cancel(order *Order, pendingAmounts *[]PendingAmt) {
 	ob.volumeMap[order.Price] -= order.Quantity
 	if order.Side {
 		ob.maxHeap.Remove(order.ID, order.Price)
@@ -77,7 +79,7 @@ func (ob *Orderbook) Cancel(order *Order, tokenID ids.ID, pendingAmounts *[]Pend
 	}
 	delete(ob.orderMap, order.ID)
 	isFilled := false
-	ob.toPendingAmount(order, tokenID, order.Quantity, isFilled, pendingAmounts)
+	ob.toPendingAmount(order, order.Quantity, isFilled, pendingAmounts)
 }
 
 func (ob *Orderbook) Remove(order *Order) {

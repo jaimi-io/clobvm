@@ -21,7 +21,7 @@ func (obm *OrderbookManager) GetOrderbook(pair Pair) *Orderbook {
 	if ob, ok := obm.orderbooks[pair]; ok {
 		return ob
 	}
-	ob := NewOrderbook()
+	ob := NewOrderbook(pair)
 	obm.orderbooks[pair] = ob
 	return ob
 }

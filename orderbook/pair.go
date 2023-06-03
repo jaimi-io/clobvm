@@ -7,8 +7,8 @@ type Pair struct {
 	QuoteTokenID ids.ID
 }
 
-func (p *Pair) TokenID(side bool, isAdd bool) ids.ID {
-	if side && isAdd || !side && !isAdd {
+func (p *Pair) TokenID(side bool) ids.ID {
+	if side {
 		return p.QuoteTokenID
 	} 
 	return p.BaseTokenID

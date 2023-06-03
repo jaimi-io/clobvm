@@ -135,22 +135,14 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				fmt.Println("AddOrder: ", tx.ID())
 				addr := crypto.PublicKey([]byte(tx.Payer()))
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
-				var tokenID, oppTokenID ids.ID
-				if action.Side {
-					tokenID = action.Pair.QuoteTokenID
-					oppTokenID = action.Pair.BaseTokenID
-				} else {
-					tokenID = action.Pair.BaseTokenID
-					oppTokenID = action.Pair.QuoteTokenID
-				}
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, tokenID, oppTokenID, pendingAmtPtr)
+				ob.Add(order, pendingAmtPtr)
 			case *actions.CancelOrder:
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
 				order := orderbook.Get(action.OrderID)
 				if order != nil {
-					orderbook.Cancel(order, action.TokenID(), pendingAmtPtr)
+					orderbook.Cancel(order, pendingAmtPtr)
 				}
 			}
 		}

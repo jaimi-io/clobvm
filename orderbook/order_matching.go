@@ -6,11 +6,11 @@ import (
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
-func GetAmountFn(side bool, isFilled bool) func (q, p uint64) uint64 {
+func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64, ids.ID) {
 	if side && !isFilled || !side && isFilled {
-		return func(q, p uint64) uint64 { return q * p}
+		return func(q, p uint64) (uint64, ids.ID) { return q * p, pair.QuoteTokenID }
 	}
-	return func(q, p uint64) uint64 { return q }
+	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
 }
 
 func min(a, b uint64) uint64 {
@@ -34,7 +34,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) matchOrder(order *Order, tokenID ids.ID, oppTokenID ids.ID, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -57,7 +57,7 @@ func (ob *Orderbook) matchOrder(order *Order, tokenID ids.ID, oppTokenID ids.ID,
 				ob.Remove(queue.Pop())
 			}
 			// TODO: avg price for the order that gets added
-			ob.toPendingAmount(takerOrder, tokenID, toFill, isFilled, pendingAmounts)
+			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
 		}
 
 		if queue.Len() == 0 {
@@ -65,7 +65,7 @@ func (ob *Orderbook) matchOrder(order *Order, tokenID ids.ID, oppTokenID ids.ID,
 		}
 	}
 	if prevQuantity > order.Quantity {
-		ob.toPendingAmount(order, oppTokenID, prevQuantity - order.Quantity, isFilled, pendingAmounts)
+		ob.toPendingAmount(order, prevQuantity - order.Quantity, isFilled, pendingAmounts)
 	} 
 }
 
@@ -75,7 +75,8 @@ type PendingAmt struct {
 	Amount  uint64
 }
 
-func (ob *Orderbook) toPendingAmount(order *Order, tokenID ids.ID, quantity uint64, isFilled bool, pendingAmounts *[]PendingAmt) {
-	getAmount := GetAmountFn(order.Side, isFilled)
-	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, getAmount(quantity, order.Price)})
+func (ob *Orderbook) toPendingAmount(order *Order, quantity uint64, isFilled bool, pendingAmounts *[]PendingAmt) {
+	getAmount := GetAmountFn(order.Side, isFilled, ob.pair)
+	amount, tokenID := getAmount(quantity, order.Price)
+	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, amount})
 }
