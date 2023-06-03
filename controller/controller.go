@@ -190,6 +190,10 @@ func (c *Controller) GetOrderbook(ctx context.Context, pair orderbook.Pair) (str
 	return fmt.Sprint(buySide), fmt.Sprint(sellSide), nil
 }
 
+func (c *Controller) GetPendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64) {
+	return c.orderbookManager.GetPendingFunds(user, tokenID, blockHeight)
+}
+
 func (c *Controller) Tracer() trace.Tracer {
 	return c.inner.Tracer()
 }

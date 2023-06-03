@@ -37,8 +37,8 @@ func(obm *OrderbookManager) AddPendingFunds(user crypto.PublicKey, tokenID ids.I
 	obm.pendingFunds[user][tokenID].Put(balance, blockHeight)
 }
 
-func (obm *OrderbookManager) GetPendingFunds(user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) uint64 {
-	if blockHeight <= 10 {
+func (obm *OrderbookManager) PullPendingFunds(user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) uint64 {
+	if blockHeight <= uint64(NumBlocks) {
 		return 0
 	}
 	if _, ok := obm.pendingFunds[user]; !ok {
@@ -47,6 +47,16 @@ func (obm *OrderbookManager) GetPendingFunds(user crypto.PublicKey, tokenID ids.
 	if _, ok := obm.pendingFunds[user][tokenID]; !ok {
 		return 0
 	}
-	blockHeight -= 10
+	blockHeight -= uint64(NumBlocks)
+	return obm.pendingFunds[user][tokenID].Pull(blockHeight)
+}
+
+func (obm *OrderbookManager) GetPendingFunds(user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64) {
+	if _, ok := obm.pendingFunds[user]; !ok {
+		return 0, blockHeight
+	}
+	if _, ok := obm.pendingFunds[user][tokenID]; !ok {
+		return 0, blockHeight
+	}
 	return obm.pendingFunds[user][tokenID].Get(blockHeight)
 }

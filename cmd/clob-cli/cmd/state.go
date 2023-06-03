@@ -55,3 +55,31 @@ var allOrdersCmd = &cobra.Command{
 		return nil
 	},
 }
+
+var pendingFundsCmd = &cobra.Command{
+	Use: "pending",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, key, _, _, cli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+		addr := key.PublicKey()
+
+		tokenID, err := promptToken("")
+		if err != nil {
+			return err
+		}
+
+		blockHeight, err := promptInt("block height")
+
+
+		bal, resBlockHeight, err := cli.PendingFunds(ctx, addr, tokenID, uint64(blockHeight))
+		if err != nil {
+			return err
+		}
+		fmt.Printf("pending balance: %d\n", bal)
+		fmt.Printf("at block height: %d\n", resBlockHeight)
+		return nil
+	},
+}
