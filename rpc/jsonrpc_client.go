@@ -57,6 +57,15 @@ func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey,
 	return reply.Balance, reply.BlockHeight, err
 }
 
+func (j *JSONRPCClient) Volumes(ctx context.Context, pair orderbook.Pair) (string, error) {
+	args := &VolumesArgs{
+		Pair: pair,
+	}
+	var reply VolumesReply
+	err := j.requester.SendRequest(ctx, "volumes", args, &reply)
+	return reply.Volumes, err
+}
+
 type Parser struct {
 	chainID ids.ID
 	genesis *genesis.Genesis

@@ -69,10 +69,25 @@ type PendingFundsReply struct {
 	BlockHeight uint64 `json:"blockHeight"`
 }
 func (j *JSONRPCServer) PendingFunds(req *http.Request, args *PendingFundsArgs, reply *PendingFundsReply) error {
-	ctx, span := j.c.Tracer().Start(req.Context(), "Server.AllOrders")
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.PendingFunds")
 	defer span.End()
 
 	var err error
 	reply.Balance, reply.BlockHeight = j.c.GetPendingFunds(ctx, args.User, args.TokenID, args.BlockHeight)
+	return err
+}
+
+type VolumesArgs struct {
+	Pair orderbook.Pair `json:"pair"`
+}
+type VolumesReply struct {
+	Volumes  string `json:"volumes"`
+}
+func (j *JSONRPCServer) Volumes(req *http.Request, args *VolumesArgs, reply *VolumesReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.Volumes")
+	defer span.End()
+
+	var err error
+	reply.Volumes, err = j.c.GetVolumes(ctx, args.Pair)
 	return err
 }

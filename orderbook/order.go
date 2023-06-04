@@ -30,8 +30,11 @@ func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, 
 	}
 }
 
+func quantityToDecimal(quantity uint64) float64 {
+	decimals := math.Pow(10, float64(9))
+	return float64(quantity) / decimals
+}
+
 func (o *Order) String() string {
-	decimals := float64(-9)
-	quantity := math.Pow(float64(o.Quantity), decimals)
-	return fmt.Sprintf("ID: %s, Price: %d, Quantity: %7.9f", o.ID.String(), o.Price, quantity)
+	return fmt.Sprintf("ID: %s, Price: %d, Quantity: %7.9f", o.ID.String(), o.Price, quantityToDecimal(o.Quantity))
 }

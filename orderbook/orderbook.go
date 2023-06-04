@@ -1,6 +1,9 @@
 package orderbook
 
 import (
+	"fmt"
+	"sort"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
 )
@@ -67,5 +70,19 @@ func (ob *Orderbook) GetBuySide() [][]*Order {
 
 func (ob *Orderbook) GetSellSide() [][]*Order {
 	return ob.minHeap.Values()
+}
+
+func (ob *Orderbook) GetVolumes() string {
+	priceLevels := len(ob.volumeMap)
+	prices := make([]int, 0, priceLevels)
+	for price := range ob.volumeMap {
+		prices = append(prices, int(price))
+	}
+	sort.Ints(prices)
+	var outputStr string
+	for i := priceLevels - 1; i >= 0; i-- {
+		outputStr += fmt.Sprintf("%d : %7.9f\n", prices[i], quantityToDecimal(ob.volumeMap[uint64(prices[i])]))
+	}
+	return fmt.Sprint(outputStr)
 }
 

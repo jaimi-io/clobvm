@@ -52,7 +52,7 @@ func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 			toFill := min(takerOrder.Quantity, order.Quantity)
 			takerOrder.Quantity -= toFill
 			order.Quantity -= toFill
-			ob.volumeMap[order.Price] -= toFill
+			ob.volumeMap[takerOrder.Price] -= toFill
 			if takerOrder.Quantity == 0 {
 				ob.Remove(queue.Pop())
 			}

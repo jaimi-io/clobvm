@@ -23,6 +23,7 @@ func init() {
 		prometheusCmd,
 		spamCmd,
 		pendingFundsCmd,
+		volumesCmd,
 	)
 
 	rootCmd.PersistentPreRunE = func(*cobra.Command, []string) error {
