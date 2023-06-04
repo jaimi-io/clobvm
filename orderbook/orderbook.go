@@ -81,7 +81,7 @@ func (ob *Orderbook) GetVolumes() string {
 	sort.Ints(prices)
 	var outputStr string
 	for i := priceLevels - 1; i >= 0; i-- {
-		outputStr += fmt.Sprintf("%d : %7.9f\n", prices[i], quantityToDecimal(ob.volumeMap[uint64(prices[i])]))
+		outputStr += fmt.Sprintf("%.6f : %.6f\n", toDecimal(uint64(prices[i])), toDecimal(ob.volumeMap[uint64(prices[i])]))
 	}
 	return fmt.Sprint(outputStr)
 }
