@@ -11,12 +11,9 @@ type VersionedBalance struct {
 	lastBlockHeight uint64
 }
 
-var (
-	NumBlocks = 10
-)
 
 func NewVersionedBalance(balance uint64, blockHeight uint64) *VersionedBalance {
-	items := make([]*VersionedItem, 0, NumBlocks)
+	items := make([]*VersionedItem, 0, PendingBlockWindow)
 	items = append(items, &VersionedItem{balance, blockHeight})
 	return &VersionedBalance{
 		items: items,
@@ -71,7 +68,7 @@ func (vb *VersionedBalance) Pull(blockHeight uint64) uint64 {
 }
 
 func (vb *VersionedBalance) Put(amount uint64, blockHeight uint64) {
-	if len(vb.items) == NumBlocks {
+	if len(vb.items) == int(PendingBlockWindow) {
 		vb.items = vb.items[1:]
 	}
 	newBalance := vb.lastBalance + amount

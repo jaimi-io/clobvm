@@ -4,7 +4,10 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 )
 
-func (ob *Orderbook) AddToEviction(orderID ids.ID, blockExpiry uint64) {
+const EvictionBlockWindow = uint64(100)
+
+func (ob *Orderbook) AddToEviction(orderID ids.ID, blockHeight uint64) {
+	blockExpiry := blockHeight + EvictionBlockWindow
 	if _, ok := ob.evictionMap[blockExpiry]; !ok {
 		ob.evictionMap[blockExpiry] = make(map[ids.ID]struct{})
 	}

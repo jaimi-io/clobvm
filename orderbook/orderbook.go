@@ -29,12 +29,12 @@ func NewOrderbook(pair Pair) *Orderbook {
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, blockExpiry uint64, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) Add(order *Order, blockHeight uint64, pendingAmounts *[]PendingAmt) {
 	ob.matchOrder(order, pendingAmounts)
 	if order.Quantity > 0 {
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order
-		ob.AddToEviction(order.ID, blockExpiry)
+		ob.AddToEviction(order.ID, blockHeight)
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
 		} else {
