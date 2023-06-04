@@ -34,9 +34,9 @@ func (ph *PriorityQueueHeap[V, S]) Len() int { return len(ph.items) }
 
 func (ph *PriorityQueueHeap[V, S]) Less(i, j int) bool {
 	if ph.isMinHeap {
-		return ph.items[i].Queue.Priority() > ph.items[j].Queue.Priority()
+		return ph.items[i].Queue.Priority() < ph.items[j].Queue.Priority()
 	}
-	return ph.items[i].Queue.Priority() < ph.items[j].Queue.Priority()
+	return ph.items[i].Queue.Priority() > ph.items[j].Queue.Priority()
 }
 
 func (ph *PriorityQueueHeap[V, S]) Swap(i, j int) {
@@ -55,14 +55,14 @@ func (ph *PriorityQueueHeap[V, S]) Push(x any) {
 func (ph *PriorityQueueHeap[V, S]) Pop() any {
 	n := len(ph.items)
 	item := ph.items[n-1]
+	ph.items[n-1] = nil
 	ph.items = ph.items[0:n-1]
 	delete(ph.hashMap, item.Queue.Priority())
 	return item.Queue
 }
 
 func (ph *PriorityQueueHeap[V, S]) Peek() *queue.LinkedMapQueue[V, S] {
-	n := len(ph.items)
-	return ph.items[n-1].Queue
+	return ph.items[0].Queue
 }
 
 func (ph *PriorityQueueHeap[V, S]) Contains(priority S) bool {
@@ -99,6 +99,11 @@ func (ph *PriorityQueueHeap[V, S]) Remove(id ids.ID, priority S) error {
 	}
 	err := lq.Remove(id)
 	return err
+}
+
+func (ph *PriorityQueueHeap[V, S]) PopQueue() *queue.LinkedMapQueue[V, S] {
+	q := heap.Pop(ph)
+	return q.(*queue.LinkedMapQueue[V, S])
 }
 
 func (ph *PriorityQueueHeap[V, S]) Values() [][]V {

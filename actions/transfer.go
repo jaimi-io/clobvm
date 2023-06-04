@@ -55,17 +55,17 @@ func (t *Transfer) Execute(
 	user := auth.GetUser(cauth)
 	obm := memoryState.(*orderbook.OrderbookManager)
 	if err = storage.PullPendingBalance(ctx, db, obm, user, t.TokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	if t.Amount == 0 {
 		err = errors.New("amount cannot be zero")
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	if err = storage.DecBalance(ctx, db, user, t.TokenID, t.Amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	if err = storage.IncBalance(ctx, db, t.To, t.TokenID, t.Amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	return &chain.Result{Success: true, Units: 0}, nil
 }

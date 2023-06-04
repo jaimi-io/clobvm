@@ -62,19 +62,19 @@ func (ao *AddOrder) Execute(
 	obm := memoryState.(*orderbook.OrderbookManager)
 	user := auth.GetUser(cauth)
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 
 	if ao.Quantity == 0 {
 		err = errors.New("amount cannot be zero")
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	amount, tokenID := ao.amount()
 	if err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, err
+		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
 	return &chain.Result{Success: true, Units: 0}, nil
 }

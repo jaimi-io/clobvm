@@ -7,12 +7,16 @@ import (
 
 type OrderbookManager struct{
 	orderbooks map[Pair]*Orderbook
+	pairs []Pair
 	pendingFunds map[crypto.PublicKey]map[ids.ID]*VersionedBalance
 }
+
+const	PendingBlockWindow = uint64(10)
 
 func NewOrderbookManager() *OrderbookManager {
 	return &OrderbookManager{
 		orderbooks: make(map[Pair]*Orderbook),
+		pairs: make([]Pair, 0),
 		pendingFunds: make(map[crypto.PublicKey]map[ids.ID]*VersionedBalance),
 	}
 }
@@ -23,6 +27,7 @@ func (obm *OrderbookManager) GetOrderbook(pair Pair) *Orderbook {
 	}
 	ob := NewOrderbook(pair)
 	obm.orderbooks[pair] = ob
+	obm.pairs = append(obm.pairs, pair)
 	return ob
 }
 
@@ -38,7 +43,7 @@ func(obm *OrderbookManager) AddPendingFunds(user crypto.PublicKey, tokenID ids.I
 }
 
 func (obm *OrderbookManager) PullPendingFunds(user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) uint64 {
-	if blockHeight <= uint64(NumBlocks) {
+	if blockHeight <= PendingBlockWindow {
 		return 0
 	}
 	if _, ok := obm.pendingFunds[user]; !ok {
@@ -47,7 +52,7 @@ func (obm *OrderbookManager) PullPendingFunds(user crypto.PublicKey, tokenID ids
 	if _, ok := obm.pendingFunds[user][tokenID]; !ok {
 		return 0
 	}
-	blockHeight -= uint64(NumBlocks)
+	blockHeight -= PendingBlockWindow
 	return obm.pendingFunds[user][tokenID].Pull(blockHeight)
 }
 

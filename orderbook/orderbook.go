@@ -2,37 +2,11 @@ package orderbook
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
-	"github.com/jaimi-io/hypersdk/crypto"
 )
-
-type Order struct {
-	ID        ids.ID
-	User      crypto.PublicKey
-	Price     uint64
-	Quantity  uint64
-	Side      bool
-}
-
-func (o *Order) GetID() ids.ID {
-	return o.ID
-}
-
-func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, side bool) *Order {
-	return &Order{
-		ID: id,
-		User: user,
-		Price: price,
-		Quantity: quantity,
-		Side: side,
-	}
-}
-
-func (o *Order) String() string {
-	return fmt.Sprintf("ID: %s, Price: %d, Quantity: %d", o.ID.String(), o.Price, o.Quantity)
-}
 
 type Orderbook struct {
 	pair Pair
@@ -41,6 +15,7 @@ type Orderbook struct {
 
 	orderMap map[ids.ID]*Order
 	volumeMap map[uint64]uint64
+	evictionMap map[uint64]map[ids.ID]struct{}
 }
 
 func NewOrderbook(pair Pair) *Orderbook {
@@ -50,14 +25,16 @@ func NewOrderbook(pair Pair) *Orderbook {
 		maxHeap: heap.NewPriorityQueueHeap[*Order, uint64](1024, false),
 		orderMap: make(map[ids.ID]*Order),
 		volumeMap: make(map[uint64]uint64),
+		evictionMap: make(map[uint64]map[ids.ID]struct{}),
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) Add(order *Order, blockHeight uint64, pendingAmounts *[]PendingAmt) {
 	ob.matchOrder(order, pendingAmounts)
 	if order.Quantity > 0 {
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order
+		ob.AddToEviction(order.ID, blockHeight)
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
 		} else {
@@ -93,5 +70,19 @@ func (ob *Orderbook) GetBuySide() [][]*Order {
 
 func (ob *Orderbook) GetSellSide() [][]*Order {
 	return ob.minHeap.Values()
+}
+
+func (ob *Orderbook) GetVolumes() string {
+	priceLevels := len(ob.volumeMap)
+	prices := make([]int, 0, priceLevels)
+	for price := range ob.volumeMap {
+		prices = append(prices, int(price))
+	}
+	sort.Ints(prices)
+	var outputStr string
+	for i := priceLevels - 1; i >= 0; i-- {
+		outputStr += fmt.Sprintf("%.6f : %.6f\n", toDecimal(uint64(prices[i])), toDecimal(ob.volumeMap[uint64(prices[i])]))
+	}
+	return fmt.Sprint(outputStr)
 }
 

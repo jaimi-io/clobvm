@@ -2,6 +2,7 @@ package genesis
 
 import (
 	"context"
+	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
@@ -92,7 +93,7 @@ func distributeTokens(ctx context.Context, db chain.Database) error {
 			return err
 		}
 		for _, tokenID := range tokens {
-			err = storage.SetBalance(ctx, db, addr, tokenID, 1000000000000)
+			err = storage.SetBalance(ctx, db, addr, tokenID, math.MaxUint64)
 			if err != nil {
 				return err
 			}

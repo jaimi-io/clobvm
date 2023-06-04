@@ -83,3 +83,24 @@ var pendingFundsCmd = &cobra.Command{
 		return nil
 	},
 }
+
+var volumesCmd = &cobra.Command{
+	Use: "volumes",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, _, _, cli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+
+		baseTokenID, quoteTokenID := getTokens()
+		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
+		
+		volumes, err := cli.Volumes(ctx, pair)
+		if err != nil {
+			return err
+		}
+		fmt.Printf(volumes)
+		return nil
+	},
+}

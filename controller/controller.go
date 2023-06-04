@@ -17,7 +17,6 @@ import (
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
 	"github.com/jaimi-io/clobvm/rpc"
-	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/config"
 	"github.com/jaimi-io/hypersdk/crypto"
 
@@ -127,6 +126,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	results := blk.Results()
 	var pendingAmounts []orderbook.PendingAmt
 	pendingAmtPtr := &pendingAmounts
+
+	c.orderbookManager.EvictAllPairs(blk.Hght, pendingAmtPtr)
+
 	for i, tx := range blk.Txs {
 		result := results[i]
 		if result.Success {
@@ -136,7 +138,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				addr := crypto.PublicKey([]byte(tx.Payer()))
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, pendingAmtPtr)
+				ob.Add(order, blk.Hght, pendingAmtPtr)
 			case *actions.CancelOrder:
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
@@ -171,21 +173,6 @@ func (c *Controller) Rejected(ctx context.Context, blk *chain.StatelessBlock) er
 
 func (c *Controller) Shutdown(context.Context) error {
 	return nil
-}
-
-func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
-	return storage.GetBalanceFromState(ctx, c.inner.ReadState, pk, tokenID)
-}
-
-func (c *Controller) GetOrderbook(ctx context.Context, pair orderbook.Pair) (string, string, error) {
-	ob := c.orderbookManager.GetOrderbook(pair)
-	buySide := ob.GetBuySide()
-	sellSide := ob.GetSellSide()
-	return fmt.Sprint(buySide), fmt.Sprint(sellSide), nil
-}
-
-func (c *Controller) GetPendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64) {
-	return c.orderbookManager.GetPendingFunds(user, tokenID, blockHeight)
 }
 
 func (c *Controller) Tracer() trace.Tracer {
