@@ -135,7 +135,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
 				fmt.Println("AddOrder: ", tx.ID())
-				addr := crypto.PublicKey([]byte(tx.Payer()))
+				addr := tx.Auth.PublicKey()
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
 				ob.Add(order, blk.Hght, pendingAmtPtr)

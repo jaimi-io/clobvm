@@ -47,6 +47,10 @@ func (e *EIP712) Payer() []byte {
 	return e.From[:]
 }
 
+func (e *EIP712) PublicKey() crypto.PublicKey {
+	return e.From
+}
+
 func (e *EIP712) CanDeduct(ctx context.Context, db chain.Database, amount uint64, tokenID ids.ID) error {
 	_, bal, err := storage.GetBalance(ctx, db, e.From, tokenID)
 	if err != nil {

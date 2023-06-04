@@ -6,7 +6,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
@@ -35,8 +34,8 @@ func (ao *AddOrder) amount() (uint64, ids.ID) {
 	return getAmount(ao.Quantity, ao.Price)
 }
 
-func (ao *AddOrder) StateKeys(cauth chain.Auth, txID ids.ID) [][]byte {
-	user := auth.GetUser(cauth)
+func (ao *AddOrder) StateKeys(auth chain.Auth, txID ids.ID) [][]byte {
+	user := auth.PublicKey()
 	return [][]byte{
 		storage.BalanceKey(user, ao.Pair.BaseTokenID),
 		storage.BalanceKey(user, ao.Pair.QuoteTokenID),
@@ -53,14 +52,14 @@ func (ao *AddOrder) Execute(
 	r chain.Rules,
 	db chain.Database,
 	timestamp int64,
-	cauth chain.Auth,
+	auth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
 	blockHeight uint64,
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
-	user := auth.GetUser(cauth)
+	user := auth.PublicKey()
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
 	}
