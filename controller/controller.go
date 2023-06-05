@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/jaimi-io/clobvm/actions"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
@@ -22,10 +23,10 @@ import (
 
 	"github.com/jaimi-io/hypersdk/builder"
 	"github.com/jaimi-io/hypersdk/chain"
-	"github.com/jaimi-io/hypersdk/consts"
+	hconsts "github.com/jaimi-io/hypersdk/consts"
 	"github.com/jaimi-io/hypersdk/gossiper"
 	"github.com/jaimi-io/hypersdk/pebble"
-	hyperrpc "github.com/jaimi-io/hypersdk/rpc"
+	hrpc "github.com/jaimi-io/hypersdk/rpc"
 	"github.com/jaimi-io/hypersdk/utils"
 	"github.com/jaimi-io/hypersdk/vm"
 )
@@ -77,7 +78,7 @@ func (c *Controller) Initialize(
 	build := builder.NewTime(inner, bcfg)
 	gcfg := gossiper.DefaultProposerConfig()
 	gcfg.GossipInterval = 1 * time.Second
-	gcfg.GossipMaxSize = consts.NetworkSizeLimit
+	gcfg.GossipMaxSize = hconsts.NetworkSizeLimit
 	gcfg.GossipProposerDiff = 3
 	gcfg.GossipProposerDepth = 1
 	gcfg.BuildProposerDiff = 1
@@ -101,7 +102,7 @@ func (c *Controller) Initialize(
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	apis := map[string]*common.HTTPHandler{}
-	jsonRPCHandler, err := hyperrpc.NewJSONRPCHandler(
+	jsonRPCHandler, err := hrpc.NewJSONRPCHandler(
 		"clobvm",
 		rpc.NewRPCServer(c),
 		common.NoLock,
@@ -109,7 +110,7 @@ func (c *Controller) Initialize(
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
+	apis[consts.JSONRPCEndpoint] = jsonRPCHandler
 	inner.Logger().Info("Returning from controller.Initialize")
 	return c.config, gen, build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
 }

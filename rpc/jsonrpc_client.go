@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
@@ -22,7 +23,7 @@ type JSONRPCClient struct {
 
 func NewRPCClient(uri string, chainID ids.ID, g *genesis.Genesis) *JSONRPCClient {
 	uri = strings.TrimSuffix(uri, "/")
-	uri += JSONRPCEndpoint
+	uri += consts.JSONRPCEndpoint
 	req := requester.New(uri, "clobvm")
 	return &JSONRPCClient{req, chainID, g}
 }

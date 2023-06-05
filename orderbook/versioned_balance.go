@@ -1,5 +1,7 @@
 package orderbook
 
+import "github.com/jaimi-io/clobvm/consts"
+
 type VersionedItem struct {
 	bal uint64
 	blkHgt uint64
@@ -13,7 +15,7 @@ type VersionedBalance struct {
 
 
 func NewVersionedBalance(balance uint64, blockHeight uint64) *VersionedBalance {
-	items := make([]*VersionedItem, 0, PendingBlockWindow)
+	items := make([]*VersionedItem, 0, consts.PendingBlockWindow)
 	items = append(items, &VersionedItem{balance, blockHeight})
 	return &VersionedBalance{
 		items: items,
@@ -68,7 +70,7 @@ func (vb *VersionedBalance) Pull(blockHeight uint64) uint64 {
 }
 
 func (vb *VersionedBalance) Put(amount uint64, blockHeight uint64) {
-	if len(vb.items) == int(PendingBlockWindow) {
+	if len(vb.items) == int(consts.PendingBlockWindow) {
 		vb.items = vb.items[1:]
 	}
 	newBalance := vb.lastBalance + amount
