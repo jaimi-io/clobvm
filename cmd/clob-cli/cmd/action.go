@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jaimi-io/clobvm/actions"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ var transferCmd = &cobra.Command{
 		}
 		
 		// Select amount
-		amount, err := promptAmount("amount")
+		amount, err := promptAmount("amount", consts.BalanceDecimals)
 		if err != nil {
 			return err
 		}
@@ -88,12 +89,12 @@ var addOrderCmd = &cobra.Command{
 		// }
 		baseTokenID, quoteTokenID := getTokens()
 		
-		quantity, err := promptAmount("quantity")
+		quantity, err := promptAmount("quantity", consts.BalanceDecimals)
 		if err != nil {
 			return err
 		}
 
-		price, err := promptAmount("price")
+		price, err := promptAmount("price", consts.PriceDecimals)
 		if err != nil {
 			return err
 		}

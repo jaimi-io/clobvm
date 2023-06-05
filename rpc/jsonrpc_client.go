@@ -28,7 +28,7 @@ func NewRPCClient(uri string, chainID ids.ID, g *genesis.Genesis) *JSONRPCClient
 	return &JSONRPCClient{req, chainID, g}
 }
 
-func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids.ID) (uint64, error) {
+func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids.ID) (float64, error) {
 	args := &BalanceArgs{
 		Address: address,
 		TokenID: tokenID,
@@ -47,7 +47,7 @@ func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (str
 	return reply.BuySide, reply.SellSide, err
 }
 
-func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64, error) {
+func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (float64, uint64, error) {
 	args := &PendingFundsArgs{
 		User:        user,
 		TokenID:     tokenID,

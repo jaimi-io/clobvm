@@ -3,6 +3,7 @@ package orderbook
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
@@ -10,7 +11,7 @@ func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64
 	if side && !isFilled || !side && isFilled {
 		return func(q, p uint64) (uint64, ids.ID) { return q * p, pair.QuoteTokenID }
 	}
-	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
+	return func(q, p uint64) (uint64, ids.ID) { return utils.QuantityToBalance(q), pair.BaseTokenID }
 }
 
 func min(a, b uint64) uint64 {

@@ -5,7 +5,9 @@ import (
 	"sort"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/clobvm/utils"
 )
 
 type Orderbook struct {
@@ -80,8 +82,9 @@ func (ob *Orderbook) GetVolumes() string {
 	}
 	sort.Ints(prices)
 	var outputStr string
+	format := "%." + fmt.Sprint(consts.PriceDecimals) + "f : %." + fmt.Sprint(consts.QuantityDecimals) + "f\n"
 	for i := priceLevels - 1; i >= 0; i-- {
-		outputStr += fmt.Sprintf("%.6f : %.6f\n", toDecimal(uint64(prices[i])), toDecimal(ob.volumeMap[uint64(prices[i])]))
+		outputStr += fmt.Sprintf(format, utils.DisplayPrice(uint64(prices[i])), utils.DisplayQuantity(ob.volumeMap[uint64(prices[i])]))
 	}
 	return fmt.Sprint(outputStr)
 }
