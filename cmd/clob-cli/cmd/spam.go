@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -12,13 +13,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ava-labs/avalanchego/utils/math"
+	amath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	trpc "github.com/jaimi-io/clobvm/rpc"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 	"github.com/jaimi-io/hypersdk/rpc"
 	hutils "github.com/jaimi-io/hypersdk/utils"
@@ -39,6 +41,8 @@ type txIssuer struct {
 	l              sync.Mutex
 	outstandingTxs int
 }
+
+var balance = uint64(1_000_000) * utils.MinQuantity()
 
 var spamCmd = &cobra.Command{
 	Use: "spam",
@@ -85,7 +89,6 @@ var transferSpamCmd = &cobra.Command{
 		uris := consts.URIS
 		cli := rpc.NewJSONRPCClient(uris[0])
 		tcli := trpc.NewRPCClient(uris[0], chainID, genesis.New())
-		balance := uint64(10000000)
 		factory := auth.NewEIP712Factory(key)
 		avaxID, _ := getTokens()
 
@@ -153,6 +156,7 @@ var transferSpamCmd = &cobra.Command{
 				return dErr
 			}
 			if !result.Success {
+				fmt.Println(string(result.Output))
 				// Should never happen
 				return errors.New("failed to return funds")
 			}
@@ -324,7 +328,7 @@ var transferSpamCmd = &cobra.Command{
 
 						// Determine how long to sleep
 						dur := time.Since(start)
-						sleep := math.Max(1000-dur.Milliseconds(), 0)
+						sleep := amath.Max(1000-dur.Milliseconds(), 0)
 						t.Reset(time.Duration(sleep) * time.Millisecond)
 					case <-gctx.Done():
 						return gctx.Err()
@@ -433,7 +437,6 @@ var orderSpamCmd = &cobra.Command{
 		cli := rpc.NewJSONRPCClient(uris[0])
 		tcli := trpc.NewRPCClient(uris[0], chainID, genesis.New())
 	
-		balance := uint64(10000000)
 		factory := auth.NewEIP712Factory(key)
 		avaxID, usdcID := getTokens()
 		pair := orderbook.Pair{
@@ -668,9 +671,12 @@ var orderSpamCmd = &cobra.Command{
 
 						// Send transaction
 						start := time.Now()
-						selected := map[crypto.PublicKey]int{}
+						selected := map[crypto.PublicKey]uint64{}
+						for a:=0; a<numAccounts; a++ {
+							selected[accounts[a].PublicKey()] = utils.MinQuantity()
+						}
 						for k := 0; k < numTxsPerAccount; k++ {
-							v := selected[accounts[i].PublicKey()] + 1
+							v := selected[accounts[i].PublicKey()] + utils.MinQuantity()
 							selected[accounts[i].PublicKey()] = v
 							side := v%2 == 0
 							var price uint64
@@ -681,7 +687,7 @@ var orderSpamCmd = &cobra.Command{
 							}
 							_, tx, fees, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
 								Pair:     pair,
-								Quantity: uint64(v),
+								Quantity: v,
 								Price:    price,
 								Side:     v % 2 == 0,
 								 // ensure txs are unique
@@ -704,7 +710,7 @@ var orderSpamCmd = &cobra.Command{
 						}
 						// Determine how long to sleep
 						dur := time.Since(start)
-						sleep := math.Max(1000-dur.Milliseconds(), 0)
+						sleep := amath.Max(1000-dur.Milliseconds(), 0)
 						// hutils.Outf("{{yellow}}took :{{/}} %dms\n", dur)
 						t.Reset(time.Duration(sleep) * time.Millisecond)
 					case <-gctx.Done():
