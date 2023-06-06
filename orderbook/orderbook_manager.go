@@ -2,6 +2,7 @@ package orderbook
 
 import (
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
@@ -10,8 +11,6 @@ type OrderbookManager struct{
 	pairs []Pair
 	pendingFunds map[crypto.PublicKey]map[ids.ID]*VersionedBalance
 }
-
-const	PendingBlockWindow = uint64(10)
 
 func NewOrderbookManager() *OrderbookManager {
 	return &OrderbookManager{
@@ -43,7 +42,7 @@ func(obm *OrderbookManager) AddPendingFunds(user crypto.PublicKey, tokenID ids.I
 }
 
 func (obm *OrderbookManager) PullPendingFunds(user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) uint64 {
-	if blockHeight <= PendingBlockWindow {
+	if blockHeight <= consts.PendingBlockWindow {
 		return 0
 	}
 	if _, ok := obm.pendingFunds[user]; !ok {
@@ -52,7 +51,7 @@ func (obm *OrderbookManager) PullPendingFunds(user crypto.PublicKey, tokenID ids
 	if _, ok := obm.pendingFunds[user][tokenID]; !ok {
 		return 0
 	}
-	blockHeight -= PendingBlockWindow
+	blockHeight -= consts.PendingBlockWindow
 	return obm.pendingFunds[user][tokenID].Pull(blockHeight)
 }
 
