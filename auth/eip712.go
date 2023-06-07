@@ -102,7 +102,6 @@ type EIP712Factory struct {
 
 func (d *EIP712Factory) Sign(msg []byte, a chain.Action) (chain.Auth, error) {
 	sig := crypto.Sign(msg, d.priv)
-	_, tokenID := a.Fee()
-	return &EIP712{sig, d.priv.PublicKey(), tokenID}, nil
+	return &EIP712{sig, d.priv.PublicKey(), a.Token()}, nil
 }
 

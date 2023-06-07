@@ -36,8 +36,12 @@ func (t *Transfer) StateKeys(auth chain.Auth, _ ids.ID) [][]byte {
 	}
 }
 
-func (t *Transfer) Fee() (amount int64, tokenID ids.ID) {
-	return 1, t.TokenID
+func (t *Transfer) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+	return 1
+}
+
+func (t *Transfer) Token() (tokenID ids.ID) {
+	return t.TokenID
 }
 
 func (t *Transfer) Execute(

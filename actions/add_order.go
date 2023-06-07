@@ -43,9 +43,13 @@ func (ao *AddOrder) StateKeys(auth chain.Auth, txID ids.ID) [][]byte {
 	}
 }
 
-func (ao *AddOrder) Fee() (amount int64, tokenID ids.ID) {
+func (ao *AddOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+	return 1
+}
+
+func (ao *AddOrder) Token() (tokenID ids.ID) {
 	_, tokenID = ao.amount()
-	return 1, tokenID
+	return tokenID
 }
 
 func (ao *AddOrder) Execute(
