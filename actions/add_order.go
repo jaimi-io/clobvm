@@ -8,9 +8,10 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
-	"github.com/jaimi-io/hypersdk/utils"
+	hutils "github.com/jaimi-io/hypersdk/utils"
 )
 
 type AddOrder struct {
@@ -21,7 +22,7 @@ type AddOrder struct {
 }
 
 func (ao *AddOrder) MaxUnits(r chain.Rules) uint64 {
-	return 1
+	return ao.Quantity / utils.MinQuantity()
 }
 
 func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
@@ -61,21 +62,21 @@ func (ao *AddOrder) Execute(
 	obm := memoryState.(*orderbook.OrderbookManager)
 	user := auth.PublicKey()
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
 
 	if ao.Quantity == 0 {
 		err = errors.New("amount cannot be zero")
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
 	amount, tokenID := ao.amount()
 	if err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	return &chain.Result{Success: true, Units: 0}, nil
+	return &chain.Result{Success: true, Units: ao.Quantity / utils.MinQuantity()}, nil
 }
 
 func (ao *AddOrder) Marshal(p *codec.Packer) {

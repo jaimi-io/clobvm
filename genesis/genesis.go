@@ -43,7 +43,7 @@ func New() *Genesis {
 
 		// Block params
 		MaxBlockTxs:   20_000,    // rely on max block units
-		MaxBlockUnits: 4000000, // 1.8 MiB
+		MaxBlockUnits: math.MaxUint64, // 18 billion worth of order quantity (to review)
 
 		// Tx params
 		BaseUnits:      48, // timestamp(8) + chainID(32) + unitPrice(8)
