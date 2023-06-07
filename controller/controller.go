@@ -139,7 +139,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 				addr := tx.Auth.PublicKey()
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, blk.Hght, pendingAmtPtr)
+				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr)
 			case *actions.CancelOrder:
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)

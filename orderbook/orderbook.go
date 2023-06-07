@@ -8,6 +8,7 @@ import (
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/heap"
 	"github.com/jaimi-io/clobvm/utils"
+	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 type Orderbook struct {
@@ -18,6 +19,7 @@ type Orderbook struct {
 	orderMap map[ids.ID]*Order
 	volumeMap map[uint64]uint64
 	evictionMap map[uint64]map[ids.ID]struct{}
+	executionHistory map[crypto.PublicKey]*ExecHistory
 }
 
 func NewOrderbook(pair Pair) *Orderbook {
@@ -28,11 +30,12 @@ func NewOrderbook(pair Pair) *Orderbook {
 		orderMap: make(map[ids.ID]*Order),
 		volumeMap: make(map[uint64]uint64),
 		evictionMap: make(map[uint64]map[ids.ID]struct{}),
+		executionHistory: make(map[crypto.PublicKey]*ExecHistory),
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, blockHeight uint64, pendingAmounts *[]PendingAmt) {
-	ob.matchOrder(order, pendingAmounts)
+func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt) {
+	ob.matchOrder(order, blockTs, pendingAmounts)
 	if order.Quantity > 0 {
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order

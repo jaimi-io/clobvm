@@ -35,7 +35,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]PendingAmt) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -59,6 +59,7 @@ func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 			}
 			// TODO: avg price for the order that gets added
 			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
+			ob.addExec(takerOrder.User, blockTs, toFill)
 		}
 
 		if queue.Len() == 0 {
@@ -66,7 +67,9 @@ func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 		}
 	}
 	if prevQuantity > order.Quantity {
-		ob.toPendingAmount(order, prevQuantity - order.Quantity, isFilled, pendingAmounts)
+		filledQuantity := prevQuantity - order.Quantity
+		ob.toPendingAmount(order, filledQuantity, isFilled, pendingAmounts)
+		ob.addExec(order.User, blockTs, filledQuantity)
 	} 
 }
 
