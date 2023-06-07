@@ -44,7 +44,12 @@ func (ao *AddOrder) StateKeys(auth chain.Auth, txID ids.ID) [][]byte {
 }
 
 func (ao *AddOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
-	return 1
+	obm := memoryState.(*orderbook.OrderbookManager)
+	if obm == nil {
+		return 0
+	}
+	user := auth.PublicKey()
+	return obm.GetOrderbook(ao.Pair).GetFee(user, timestamp, ao.Quantity)
 }
 
 func (ao *AddOrder) Token() (tokenID ids.ID) {

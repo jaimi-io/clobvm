@@ -66,7 +66,7 @@ func (eh *ExecHistory) AddExec(timestamp int64, quantity uint64) {
 	}
 }
 
-func (eh *ExecHistory) GetMonthlyExecuted(blockTs int64) uint64 {
+func (eh *ExecHistory) getMonthlyExecuted(blockTs int64) uint64 {
 	eh.removeOldExecs(blockTs)
 	eh.advanceExecs(blockTs)
 	return eh.monthlyExecuted
@@ -79,9 +79,10 @@ func (ob *Orderbook) addExec(user crypto.PublicKey, timestamp int64, quantity ui
 	ob.executionHistory[user].AddExec(timestamp, quantity)
 }
 
-func (ob *Orderbook) GetMonthlyExecuted(user crypto.PublicKey, timestamp int64) uint64 {
+func (ob *Orderbook) GetFee(user crypto.PublicKey, timestamp int64, quantity uint64) uint64 {
 	if _, ok := ob.executionHistory[user]; !ok {
-		return 0
+		return CalculateFee(0, quantity)
 	}
-	return ob.executionHistory[user].GetMonthlyExecuted(timestamp)
+	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
+	return CalculateFee(monthlyExecuted, quantity)
 }
