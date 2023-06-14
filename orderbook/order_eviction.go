@@ -31,7 +31,7 @@ func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt) {
 }
 
 func (obm *OrderbookManager) EvictAllPairs(blockNumber uint64, pendingAmounts *[]PendingAmt) {
-	for _, pair := range obm.pairs {
+	for pair := range obm.orderbooks {
 		ob := obm.orderbooks[pair]
 		ob.Evict(blockNumber, pendingAmounts)
 	}
