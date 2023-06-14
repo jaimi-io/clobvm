@@ -40,6 +40,7 @@ func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendin
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order
 		ob.AddToEviction(order.ID, blockHeight)
+		order.Fee = ob.GetFeeRate(order.User, blockTs)
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
 		} else {

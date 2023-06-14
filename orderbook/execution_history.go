@@ -86,3 +86,11 @@ func (ob *Orderbook) GetFee(user crypto.PublicKey, timestamp int64, quantity uin
 	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
 	return CalculateFee(monthlyExecuted, quantity)
 }
+
+func (ob *Orderbook) GetFeeRate(user crypto.PublicKey, timestamp int64) float64 {
+	if _, ok := ob.executionHistory[user]; !ok {
+		return GetFeeRate(0)
+	}
+	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
+	return GetFeeRate(monthlyExecuted)
+}

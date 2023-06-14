@@ -14,6 +14,7 @@ type Order struct {
 	User      crypto.PublicKey
 	Price     uint64
 	Quantity  uint64
+	Fee       float64
 	Side      bool
 }
 

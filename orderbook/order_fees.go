@@ -31,3 +31,7 @@ func CalculateFee(monthlyExecuted uint64, amount uint64) uint64 {
 	cumulFee := float64(amount) * fee
 	return uint64(math.Ceil(cumulFee))
 }
+
+func GetFeeRate(monthlyExecuted uint64) float64 {
+	return getFee(monthlyExecuted)
+}

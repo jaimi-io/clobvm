@@ -9,9 +9,9 @@ import (
 
 func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64, ids.ID) {
 	if side && !isFilled || !side && isFilled {
-		return func(q, p uint64) (uint64, ids.ID) { return q * p, pair.QuoteTokenID }
+		return func(q, p uint64) (uint64, ids.ID) { return uint64(float64(q) * utils.DisplayPrice(p)), pair.QuoteTokenID }
 	}
-	return func(q, p uint64) (uint64, ids.ID) { return utils.QuantityToBalance(q), pair.BaseTokenID }
+	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
 }
 
 func min(a, b uint64) uint64 {
@@ -81,6 +81,9 @@ type PendingAmt struct {
 
 func (ob *Orderbook) toPendingAmount(order *Order, quantity uint64, isFilled bool, pendingAmounts *[]PendingAmt) {
 	getAmount := GetAmountFn(order.Side, isFilled, ob.pair)
+	if !isFilled {
+		quantity += uint64(float64(quantity) * order.Fee)
+	}
 	amount, tokenID := getAmount(quantity, order.Price)
-	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, amount})
+	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, amount * utils.MinQuantity()})
 }
