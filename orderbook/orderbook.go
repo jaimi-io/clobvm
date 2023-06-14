@@ -37,10 +37,16 @@ func NewOrderbook(pair Pair) *Orderbook {
 func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt) {
 	ob.matchOrder(order, blockTs, pendingAmounts)
 	if order.Quantity > 0 {
+		feeToReturn := ob.RefundFee(order.User, blockTs, order.Quantity)
+		if feeToReturn > 0 {
+			ob.toPendingAmount(order, feeToReturn, false, pendingAmounts)
+		}
+
 		ob.volumeMap[order.Price] += order.Quantity
 		ob.orderMap[order.ID] = order
 		ob.AddToEviction(order.ID, blockHeight)
 		order.Fee = ob.GetFeeRate(order.User, blockTs)
+
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
 		} else {

@@ -6,6 +6,10 @@ import (
 	"github.com/jaimi-io/clobvm/consts"
 )
 
+func MinBalance() uint64 {
+	return uint64(math.Pow10(consts.BalanceDecimals))
+}
+
 func MinQuantity() uint64 {
 	return uint64(math.Pow10(consts.BalanceDecimals - consts.QuantityDecimals))
 }

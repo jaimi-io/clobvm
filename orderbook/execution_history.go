@@ -81,16 +81,24 @@ func (ob *Orderbook) addExec(user crypto.PublicKey, timestamp int64, quantity ui
 
 func (ob *Orderbook) GetFee(user crypto.PublicKey, timestamp int64, quantity uint64) uint64 {
 	if _, ok := ob.executionHistory[user]; !ok {
-		return CalculateFee(0, quantity)
+		return CalculateTakerFee(0, quantity)
 	}
 	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
-	return CalculateFee(monthlyExecuted, quantity)
+	return CalculateTakerFee(monthlyExecuted, quantity)
 }
 
 func (ob *Orderbook) GetFeeRate(user crypto.PublicKey, timestamp int64) float64 {
 	if _, ok := ob.executionHistory[user]; !ok {
-		return GetFeeRate(0)
+		return GetMakerRate(0)
 	}
 	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
-	return GetFeeRate(monthlyExecuted)
+	return GetMakerRate(monthlyExecuted)
+}
+
+func (ob *Orderbook) RefundFee(user crypto.PublicKey, timestamp int64, quantity uint64) uint64 {
+	if _, ok := ob.executionHistory[user]; !ok {
+		return RefundTakerFee(0, quantity)
+	}
+	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
+	return RefundTakerFee(monthlyExecuted, quantity)
 }

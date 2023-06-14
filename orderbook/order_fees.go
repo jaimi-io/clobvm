@@ -1,37 +1,51 @@
 package orderbook
 
-import "math"
+import (
+	"math"
+
+	"github.com/jaimi-io/clobvm/utils"
+)
 
 type Fee struct {
 	Amount uint64
-	Percent float32
+	MakerRate float64
+	TakerRate float64
 }
 
 var fees = []Fee{
-	{Amount: 0, Percent: 0.004},
-	{Amount: 10_000_000, Percent: 0.003},
-	{Amount: 1_000_000_000, Percent: 0.002},
-	{Amount: math.MaxUint64, Percent: 0.001},
+	{Amount: 0 * utils.MinBalance(), MakerRate: 0.001, TakerRate: 0.0015},
+	{Amount: 100_000 * utils.MinBalance(), MakerRate: 0.0009, TakerRate: 0.001},
+	{Amount: 1_000_000 * utils.MinBalance(), MakerRate: 0.0008, TakerRate: 0.001},
+	{Amount: 10_000_000 * utils.MinBalance(), MakerRate: 0.0007, TakerRate: 0.0009},
 }
 
-func getFee(monthlyExecuted uint64) float64 {
-	var currentFee float64
+func getFeeRates(monthlyExecuted uint64) (float64, float64) {
+	var currentMakerRate, currentTakerRate float64
 	for _, fee := range fees {
 		if monthlyExecuted >= fee.Amount {
-			currentFee = float64(fee.Percent)
+			currentMakerRate = fee.MakerRate
+			currentTakerRate = fee.TakerRate
 		} else {
 			break
 		}
 	}
-	return currentFee
+	return currentMakerRate, currentTakerRate
 }
 
-func CalculateFee(monthlyExecuted uint64, amount uint64) uint64 {
-	fee := getFee(monthlyExecuted)
-	cumulFee := float64(amount) * fee
-	return uint64(math.Ceil(cumulFee))
+func CalculateTakerFee(monthlyExecuted uint64, amount uint64) uint64 {
+	_, takerRate := getFeeRates(monthlyExecuted)
+	takerFee := float64(amount) * takerRate
+	return uint64(math.Ceil(takerFee))
 }
 
-func GetFeeRate(monthlyExecuted uint64) float64 {
-	return getFee(monthlyExecuted)
+func GetMakerRate(monthlyExecuted uint64) float64 {
+	makerRate, _ := getFeeRates(monthlyExecuted)
+	return makerRate
+}
+
+func RefundTakerFee(monthlyExecuted uint64, amount uint64) uint64 {
+	makerRate, takerRate := getFeeRates(monthlyExecuted)
+	refundRate := takerRate - makerRate
+	refund := float64(amount) * refundRate
+	return uint64(math.Ceil(refund))
 }

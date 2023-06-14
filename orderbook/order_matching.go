@@ -81,7 +81,7 @@ type PendingAmt struct {
 
 func (ob *Orderbook) toPendingAmount(order *Order, quantity uint64, isFilled bool, pendingAmounts *[]PendingAmt) {
 	getAmount := GetAmountFn(order.Side, isFilled, ob.pair)
-	if !isFilled {
+	if !isFilled && order.Fee > 0 {
 		quantity += uint64(float64(quantity) * order.Fee)
 	}
 	amount, tokenID := getAmount(quantity, order.Price)
