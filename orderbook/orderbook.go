@@ -19,7 +19,7 @@ type Orderbook struct {
 	orderMap map[ids.ID]*Order
 	volumeMap map[uint64]uint64
 	evictionMap map[uint64]map[ids.ID]struct{}
-	executionHistory map[crypto.PublicKey]*ExecHistory
+	executionHistory map[crypto.PublicKey]*MonthlyExecuted
 }
 
 func NewOrderbook(pair Pair) *Orderbook {
@@ -30,7 +30,7 @@ func NewOrderbook(pair Pair) *Orderbook {
 		orderMap: make(map[ids.ID]*Order),
 		volumeMap: make(map[uint64]uint64),
 		evictionMap: make(map[uint64]map[ids.ID]struct{}),
-		executionHistory: make(map[crypto.PublicKey]*ExecHistory),
+		executionHistory: make(map[crypto.PublicKey]*MonthlyExecuted),
 	}
 }
 
