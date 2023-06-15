@@ -1,6 +1,10 @@
 package orderbook
 
-import "github.com/jaimi-io/clobvm/consts"
+import (
+	"container/ring"
+
+	"github.com/jaimi-io/clobvm/consts"
+)
 
 type VersionedItem struct {
 	bal uint64
@@ -8,15 +12,15 @@ type VersionedItem struct {
 }
 
 type VersionedBalance struct {
-	items []*VersionedItem
+	items *ring.Ring
 	lastBalance uint64
 	lastBlockHeight uint64
 }
 
 
 func NewVersionedBalance(balance uint64, blockHeight uint64) *VersionedBalance {
-	items := make([]*VersionedItem, 0, consts.PendingBlockWindow)
-	items = append(items, &VersionedItem{balance, blockHeight})
+	items := ring.New(int(consts.PendingBlockWindow))
+	items.Value = &VersionedItem{balance, blockHeight}
 	return &VersionedBalance{
 		items: items,
 		lastBalance: balance,
@@ -30,11 +34,14 @@ func (vb *VersionedBalance) Get(blockHeight uint64) (uint64, uint64) {
 	}
 	var balance uint64
 
-	for i := len(vb.items)-1; i >= 0; i-- {
-		if vb.items[i].blkHgt <= blockHeight {
-			balance = vb.items[i].bal
+	cur := vb.items
+	for i := 0; i < vb.items.Len() - 1 && cur.Value != nil; i++ {
+		item := cur.Value.(*VersionedItem)
+		if item.blkHgt <= blockHeight {
+			balance = item.bal
 			break
 		}
+		cur = cur.Prev()
 	}
 
 	return balance, blockHeight
@@ -42,39 +49,38 @@ func (vb *VersionedBalance) Get(blockHeight uint64) (uint64, uint64) {
 
 func (vb *VersionedBalance) Pull(blockHeight uint64) uint64 {
 	if blockHeight > vb.lastBlockHeight {
-		vb.items = vb.items[0:]
 		res := vb.lastBalance
 		vb.lastBalance = 0
 		return res
 	}
 	var balance uint64
-	var nextIndex int
 
-	for i := len(vb.items)-1; i >= 0; i-- {
-		if vb.items[i].blkHgt <= blockHeight {
-			balance = vb.items[i].bal
-			if i > len(vb.items)-1 {
-				// only slice if not the last item
-				nextIndex = i+1
-			}
+	cur := vb.items
+	for i := 0; i < vb.items.Len() - 1 && cur.Value != nil; i++ {
+		item := cur.Value.(*VersionedItem)
+		if item.blkHgt <= blockHeight {
+			balance = item.bal
 			break
 		}
+		cur = cur.Prev()
 	}
 
-	vb.items = vb.items[nextIndex:]
-	for j := 0; j < len(vb.items); j++ {
-		vb.items[j].bal -= balance
+	for cur != vb.items && cur.Next().Value != nil {
+		cur = cur.Next()
+		item := cur.Value.(*VersionedItem)
+		item.bal -= balance
 	}
+
 	vb.lastBalance -= balance
 	return balance
 }
 
 func (vb *VersionedBalance) Put(amount uint64, blockHeight uint64) {
-	if len(vb.items) == int(consts.PendingBlockWindow) {
-		vb.items = vb.items[1:]
-	}
 	newBalance := vb.lastBalance + amount
-	vb.items = append(vb.items, &VersionedItem{newBalance, blockHeight})
+	next := vb.items.Next()
+	next.Value = &VersionedItem{newBalance, blockHeight}
+
+	vb.items = next
 	vb.lastBalance = newBalance
 	vb.lastBlockHeight = blockHeight
 }
