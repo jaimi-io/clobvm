@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/api/metrics"
+	ametrics "github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
@@ -35,6 +35,8 @@ type Controller struct {
 	inner *vm.VM
 	orderbookManager *orderbook.OrderbookManager
 
+	metrics *Metrics
+
 	snowCtx *snow.Context
 	stateManager *StateManager
 	config *config.Config
@@ -50,7 +52,7 @@ func New() *vm.VM {
 func (c *Controller) Initialize(
 	inner *vm.VM, // hypersdk VM
 	snowCtx *snow.Context,
-	gatherer metrics.MultiGatherer,
+	gatherer ametrics.MultiGatherer,
 	genesisBytes []byte,
 	upgradeBytes []byte,
 	configBytes []byte,
@@ -70,6 +72,11 @@ func (c *Controller) Initialize(
 	c.inner = inner
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
+	var err error
+	c.metrics, err = NewMetrics(gatherer)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	gen := genesis.New()
 	c.rules = gen.GetRules()
 	c.orderbookManager = orderbook.NewOrderbookManager()
@@ -135,18 +142,22 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		if result.Success {
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
+				c.metrics.addOrder.Inc()
 				fmt.Println("AddOrder: ", tx.ID())
 				addr := tx.Auth.PublicKey()
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
 				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr)
 			case *actions.CancelOrder:
+				c.metrics.cancelOrder.Inc()
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
 				order := orderbook.Get(action.OrderID)
 				if order != nil {
 					orderbook.Cancel(order, pendingAmtPtr)
 				}
+			case *actions.Transfer:
+				c.metrics.transfer.Inc()
 			}
 		}
 		fmt.Println("Res: ", result, " Tx: ", tx.ID())
