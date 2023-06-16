@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/clobvm/metrics"
 	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
@@ -34,8 +35,8 @@ func NewOrderbook(pair Pair) *Orderbook {
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt) {
-	ob.matchOrder(order, blockTs, pendingAmounts)
+func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
+	ob.matchOrder(order, blockTs, pendingAmounts, metrics)
 	if order.Quantity > 0 {
 		feeToReturn := ob.RefundFee(order.User, blockTs, order.Quantity)
 		if feeToReturn > 0 {
@@ -52,6 +53,9 @@ func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendin
 		} else {
 			ob.minHeap.Add(order, order.ID, order.Price)
 		}
+
+		metrics.OrderNumInc()
+		metrics.OrderAmountAdd(order.Quantity)
 	}
 }
 
@@ -59,21 +63,22 @@ func (ob *Orderbook) Get(id ids.ID) *Order {
 	return ob.orderMap[id]
 }
 
-func (ob *Orderbook) Cancel(order *Order, pendingAmounts *[]PendingAmt) {
-	ob.volumeMap[order.Price] -= order.Quantity
+func (ob *Orderbook) Cancel(order *Order, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
 	if order.Side {
 		ob.maxHeap.Remove(order.ID, order.Price)
 	} else {
 		ob.minHeap.Remove(order.ID, order.Price)
 	}
-	delete(ob.orderMap, order.ID)
+	ob.Remove(order, metrics)
 	isFilled := false
 	ob.toPendingAmount(order, order.Quantity, isFilled, pendingAmounts)
 }
 
-func (ob *Orderbook) Remove(order *Order) {
+func (ob *Orderbook) Remove(order *Order, metrics *metrics.Metrics) {
 	ob.volumeMap[order.Price] -= order.Quantity
 	delete(ob.orderMap, order.ID)
+	metrics.OrderNumInc()
+	metrics.OrderAmountSub(order.Quantity)
 }
 
 func (ob *Orderbook) GetBuySide() [][]*Order {

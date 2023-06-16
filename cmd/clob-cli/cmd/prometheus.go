@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
+	cutils "github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/utils"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -106,6 +107,18 @@ var generatePrometheusCmd = &cobra.Command{
 
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_actions_cancel_order[30s])/30", chainID))
 		utils.Outf("{{yellow}}cancel orders per second:{{/}} %s\n", panels[len(panels)-1])
+
+		panels = append(panels, fmt.Sprintf("avalanche_%s_vm_clobvm_orders_order_num", chainID))
+		utils.Outf("{{yellow}}number open orders:{{/}} %s\n", panels[len(panels)-1])
+
+		panels = append(panels, fmt.Sprintf("avalanche_%s_vm_clobvm_orders_order_amount/%d", chainID, cutils.MinBalance()))
+		utils.Outf("{{yellow}}sum of open orders:{{/}} %s\n", panels[len(panels)-1])
+
+		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_orders_order_fills_num[30s])/30", chainID))
+		utils.Outf("{{yellow}}number of fills per second:{{/}} %s\n", panels[len(panels)-1])
+
+		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_orders_order_fills_amount[30s])/30", chainID))
+		utils.Outf("{{yellow}}sum of fills per second:{{/}} %s\n", panels[len(panels)-1])
 
 		panels = append(panels, fmt.Sprintf("rate(avalanche_%s_vm_clobvm_orders_order_processing_sum[30s])/1000/30", chainID))
 		utils.Outf("{{yellow}}order processing wait (μs/s):{{/}} %s\n", panels[len(panels)-1])

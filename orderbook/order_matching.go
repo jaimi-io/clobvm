@@ -3,6 +3,7 @@ package orderbook
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/clobvm/metrics"
 	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
@@ -35,7 +36,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -55,11 +56,13 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 			order.Quantity -= toFill
 			ob.volumeMap[takerOrder.Price] -= toFill
 			if takerOrder.Quantity == 0 {
-				ob.Remove(queue.Pop())
+				ob.Remove(queue.Pop(), metrics)
 			}
-			// TODO: avg price for the order that gets added
 			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
 			ob.addExec(takerOrder.User, blockTs, toFill)
+			metrics.OrderAmountSub(toFill)
+			metrics.OrderFillsNum()
+			metrics.OrderFillsAmount(toFill)
 		}
 
 		if queue.Len() == 0 {
@@ -70,6 +73,8 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 		filledQuantity := prevQuantity - order.Quantity
 		ob.toPendingAmount(order, filledQuantity, isFilled, pendingAmounts)
 		ob.addExec(order.User, blockTs, filledQuantity)
+		metrics.OrderFillsNum()
+		metrics.OrderFillsAmount(filledQuantity)
 	} 
 }
 
