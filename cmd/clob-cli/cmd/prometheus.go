@@ -101,6 +101,15 @@ var generatePrometheusCmd = &cobra.Command{
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_vm_txs_accepted[30s])/30", chainID))
 		utils.Outf("{{yellow}}transactions per second:{{/}} %s\n", panels[len(panels)-1])
 
+		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_actions_add_order[30s])/30", chainID))
+		utils.Outf("{{yellow}}add orders per second:{{/}} %s\n", panels[len(panels)-1])
+
+		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_actions_cancel_order[30s])/30", chainID))
+		utils.Outf("{{yellow}}cancel orders per second:{{/}} %s\n", panels[len(panels)-1])
+
+		panels = append(panels, fmt.Sprintf("rate(avalanche_%s_vm_clobvm_orders_order_processing_sum[30s])/1000/30", chainID))
+		utils.Outf("{{yellow}}order processing wait (μs/s):{{/}} %s\n", panels[len(panels)-1])
+
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_state_operations[30s])/30", chainID))
 		utils.Outf("{{yellow}}state operations per second:{{/}} %s\n", panels[len(panels)-1])
 
@@ -110,65 +119,14 @@ var generatePrometheusCmd = &cobra.Command{
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_root_calculated_sum[30s])/1000000/30", chainID))
 		utils.Outf("{{yellow}}root calcuation wait (ms/s):{{/}} %s\n", panels[len(panels)-1])
 
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_commit_state_sum[30s])/1000000/30", chainID))
-		utils.Outf("{{yellow}}commit state wait (ms/s):{{/}} %s\n", panels[len(panels)-1])
-
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_wait_signatures_sum[30s])/1000000/30", chainID))
 		utils.Outf("{{yellow}}signature verification wait (ms/s):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_build_block_sum[30s])/increase(avalanche_%s_vm_hyper_sdk_chain_build_block_count[30s])/1000000", chainID, chainID))
-		utils.Outf("{{yellow}}build block (ms):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_early_build_stop[30s])", chainID))
-		utils.Outf("{{yellow}}early build stop:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_tx_block_verify_sum[30s])/increase(avalanche_%s_vm_hyper_sdk_chain_tx_block_verify_count[30s])/1000000", chainID, chainID))
-		utils.Outf("{{yellow}}verify tx block (ms):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_verify_wait_sum[30s])/increase(avalanche_%s_vm_hyper_sdk_chain_verify_wait_count[30s])/1000000", chainID, chainID))
-		utils.Outf("{{yellow}}verify wait (ms):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_tx_block_issuance_diff_sum[30s])/increase(avalanche_%s_vm_hyper_sdk_chain_tx_block_issuance_diff_count[30s])/1000000", chainID, chainID))
-		utils.Outf("{{yellow}}tx block issuance diff (ms):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_root_block_issuance_diff_sum[30s])/increase(avalanche_%s_vm_hyper_sdk_chain_root_block_issuance_diff_count[30s])/1000000", chainID, chainID))
-		utils.Outf("{{yellow}}root block issuance diff (ms):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_tx_blocks_missing[30s])", chainID))
-		utils.Outf("{{yellow}}missing tx blocks:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_deleted_tx_blocks[30s])", chainID))
-		utils.Outf("{{yellow}}deleted tx blocks:{{/}} %s\n", panels[len(panels)-1])
 
 		panels = append(panels, fmt.Sprintf("avalanche_%s_vm_hyper_sdk_chain_mempool_size", chainID))
 		utils.Outf("{{yellow}}mempool size:{{/}} %s\n", panels[len(panels)-1])
 
-		panels = append(panels, fmt.Sprintf("avalanche_%s_vm_hyper_sdk_chain_mempool_size_after_build", chainID))
-		utils.Outf("{{yellow}}mempool size after build:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_mempool_mempool_build_overhead_sum[30s])/increase(avalanche_%s_vm_mempool_mempool_build_overhead_count[30s])/1000000", chainID, chainID))
-		utils.Outf("{{yellow}}mempool build overhead (ms):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("avalanche_%s_vm_hyper_sdk_chain_acceptor_drift", chainID))
-		utils.Outf("{{yellow}}acceptor drift:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_tx_block_bytes_sent[30s])/30", chainID))
-		utils.Outf("{{yellow}}block bytes sent (B/s):{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_hyper_sdk_chain_tx_block_bytes_received[30s])/30", chainID))
-		utils.Outf("{{yellow}}block bytes received (B/s):{{/}} %s\n", panels[len(panels)-1])
-
 		panels = append(panels, "avalanche_resource_tracker_cpu_usage")
 		utils.Outf("{{yellow}}CPU usage:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_blockdb_pebble_l0_compactions[30s]) + increase(avalanche_%s_vm_blockdb_pebble_other_compactions[30s])", chainID, chainID))
-		utils.Outf("{{yellow}}blockdb compactions:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_statedb_pebble_l0_compactions[30s]) + increase(avalanche_%s_vm_statedb_pebble_other_compactions[30s])", chainID, chainID))
-		utils.Outf("{{yellow}}statedb compactions:{{/}} %s\n", panels[len(panels)-1])
-
-		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_metadb_pebble_l0_compactions[30s]) + increase(avalanche_%s_vm_metadb_pebble_other_compactions[30s])", chainID, chainID))
-		utils.Outf("{{yellow}}metadb compactions:{{/}} %s\n", panels[len(panels)-1])
 
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_handler_chits_sum[30s])/1000000/30 + increase(avalanche_%s_handler_notify_sum[30s])/1000000/30 + increase(avalanche_%s_handler_get_sum[30s])/1000000/30 + increase(avalanche_%s_handler_push_query_sum[30s])/1000000/30 + increase(avalanche_%s_handler_put_sum[30s])/1000000/30 + increase(avalanche_%s_handler_pull_query_sum[30s])/1000000/30 + increase(avalanche_%s_handler_query_failed_sum[30s])/1000000/30", chainID, chainID, chainID, chainID, chainID, chainID, chainID))
 		utils.Outf("{{yellow}}consensus engine processing (ms/s):{{/}} %s\n", panels[len(panels)-1])

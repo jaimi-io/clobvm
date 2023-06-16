@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -137,6 +138,7 @@ func promptAddress(label string) (crypto.PublicKey, error) {
 
 func promptAmount(
 	label string,
+	decimals uint64,
 ) (uint64, error) {
 	promptText := promptui.Prompt{
 		Label: label,
@@ -144,7 +146,7 @@ func promptAmount(
 			if len(input) == 0 {
 				return errors.New("Amount cannot be empty")
 			}
-			_, err := strconv.ParseUint(input, 10, 64)
+			_, err := strconv.ParseFloat(input, 64)
 			if err != nil {
 				return err
 			}
@@ -156,7 +158,8 @@ func promptAmount(
 		return 0, err
 	}
 	rawAmount = strings.TrimSpace(rawAmount)
-	return strconv.ParseUint(rawAmount, 10, 64)
+	amount, err := strconv.ParseFloat(rawAmount, 64)
+	return uint64(amount * math.Pow10(int(decimals))), err
 }
 
 func promptContinue() (bool, error) {

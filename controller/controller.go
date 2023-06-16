@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ava-labs/avalanchego/api/metrics"
+	ametrics "github.com/ava-labs/avalanchego/api/metrics"
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/snow"
@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanchego/trace"
 	"github.com/ava-labs/avalanchego/version"
 	"github.com/jaimi-io/clobvm/actions"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
@@ -22,10 +23,10 @@ import (
 
 	"github.com/jaimi-io/hypersdk/builder"
 	"github.com/jaimi-io/hypersdk/chain"
-	"github.com/jaimi-io/hypersdk/consts"
+	hconsts "github.com/jaimi-io/hypersdk/consts"
 	"github.com/jaimi-io/hypersdk/gossiper"
 	"github.com/jaimi-io/hypersdk/pebble"
-	hyperrpc "github.com/jaimi-io/hypersdk/rpc"
+	hrpc "github.com/jaimi-io/hypersdk/rpc"
 	"github.com/jaimi-io/hypersdk/utils"
 	"github.com/jaimi-io/hypersdk/vm"
 )
@@ -33,6 +34,8 @@ import (
 type Controller struct {
 	inner *vm.VM
 	orderbookManager *orderbook.OrderbookManager
+
+	metrics *Metrics
 
 	snowCtx *snow.Context
 	stateManager *StateManager
@@ -49,7 +52,7 @@ func New() *vm.VM {
 func (c *Controller) Initialize(
 	inner *vm.VM, // hypersdk VM
 	snowCtx *snow.Context,
-	gatherer metrics.MultiGatherer,
+	gatherer ametrics.MultiGatherer,
 	genesisBytes []byte,
 	upgradeBytes []byte,
 	configBytes []byte,
@@ -69,6 +72,11 @@ func (c *Controller) Initialize(
 	c.inner = inner
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
+	var err error
+	c.metrics, err = NewMetrics(gatherer)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	gen := genesis.New()
 	c.rules = gen.GetRules()
 	c.orderbookManager = orderbook.NewOrderbookManager()
@@ -77,7 +85,7 @@ func (c *Controller) Initialize(
 	build := builder.NewTime(inner, bcfg)
 	gcfg := gossiper.DefaultProposerConfig()
 	gcfg.GossipInterval = 1 * time.Second
-	gcfg.GossipMaxSize = consts.NetworkSizeLimit
+	gcfg.GossipMaxSize = hconsts.NetworkSizeLimit
 	gcfg.GossipProposerDiff = 3
 	gcfg.GossipProposerDepth = 1
 	gcfg.BuildProposerDiff = 1
@@ -101,7 +109,7 @@ func (c *Controller) Initialize(
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
 	apis := map[string]*common.HTTPHandler{}
-	jsonRPCHandler, err := hyperrpc.NewJSONRPCHandler(
+	jsonRPCHandler, err := hrpc.NewJSONRPCHandler(
 		"clobvm",
 		rpc.NewRPCServer(c),
 		common.NoLock,
@@ -109,7 +117,7 @@ func (c *Controller) Initialize(
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	apis[rpc.JSONRPCEndpoint] = jsonRPCHandler
+	apis[consts.JSONRPCEndpoint] = jsonRPCHandler
 	inner.Logger().Info("Returning from controller.Initialize")
 	return c.config, gen, build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
 }
@@ -123,6 +131,7 @@ func (c *Controller) StateManager() chain.StateManager {
 }
 
 func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) error {
+	start := time.Now()
 	results := blk.Results()
 	var pendingAmounts []orderbook.PendingAmt
 	pendingAmtPtr := &pendingAmounts
@@ -134,18 +143,22 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 		if result.Success {
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
+				c.metrics.addOrder.Inc()
 				fmt.Println("AddOrder: ", tx.ID())
-				addr := crypto.PublicKey([]byte(tx.Payer()))
+				addr := tx.Auth.PublicKey()
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, blk.Hght, pendingAmtPtr)
+				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr)
 			case *actions.CancelOrder:
+				c.metrics.cancelOrder.Inc()
 				fmt.Println("CancelOrder: ", tx.ID())
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
 				order := orderbook.Get(action.OrderID)
 				if order != nil {
 					orderbook.Cancel(order, pendingAmtPtr)
 				}
+			case *actions.Transfer:
+				c.metrics.transfer.Inc()
 			}
 		}
 		fmt.Println("Res: ", result, " Tx: ", tx.ID())
@@ -164,6 +177,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			c.orderbookManager.AddPendingFunds(user, tokenID, balance, blk.Hght)
 		}
 	}
+	c.metrics.orderProcessing.Observe(float64(time.Since(start)))
 	return nil
 }
 

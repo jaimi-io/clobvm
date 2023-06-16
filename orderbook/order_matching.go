@@ -3,12 +3,13 @@ package orderbook
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64, ids.ID) {
 	if side && !isFilled || !side && isFilled {
-		return func(q, p uint64) (uint64, ids.ID) { return q * p, pair.QuoteTokenID }
+		return func(q, p uint64) (uint64, ids.ID) { return uint64(float64(q) * utils.DisplayPrice(p)), pair.QuoteTokenID }
 	}
 	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
 }
@@ -34,7 +35,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]PendingAmt) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -58,6 +59,7 @@ func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 			}
 			// TODO: avg price for the order that gets added
 			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
+			ob.addExec(takerOrder.User, blockTs, toFill)
 		}
 
 		if queue.Len() == 0 {
@@ -65,7 +67,9 @@ func (ob *Orderbook) matchOrder(order *Order, pendingAmounts *[]PendingAmt) {
 		}
 	}
 	if prevQuantity > order.Quantity {
-		ob.toPendingAmount(order, prevQuantity - order.Quantity, isFilled, pendingAmounts)
+		filledQuantity := prevQuantity - order.Quantity
+		ob.toPendingAmount(order, filledQuantity, isFilled, pendingAmounts)
+		ob.addExec(order.User, blockTs, filledQuantity)
 	} 
 }
 
@@ -77,6 +81,9 @@ type PendingAmt struct {
 
 func (ob *Orderbook) toPendingAmount(order *Order, quantity uint64, isFilled bool, pendingAmounts *[]PendingAmt) {
 	getAmount := GetAmountFn(order.Side, isFilled, ob.pair)
+	if !isFilled && order.Fee > 0 {
+		quantity += uint64(float64(quantity) * order.Fee)
+	}
 	amount, tokenID := getAmount(quantity, order.Price)
-	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, amount})
+	*pendingAmounts = append(*pendingAmounts, PendingAmt{order.User, tokenID, amount * utils.MinQuantity()})
 }

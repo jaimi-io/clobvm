@@ -6,7 +6,9 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/storage"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -40,11 +42,21 @@ func (e *EIP712) AsyncVerify(msg []byte) error {
 }
 
 func (e *EIP712) Verify(ctx context.Context, r chain.Rules, db chain.Database, action chain.Action) (units uint64, err error) {
-	return 1, nil
+	switch a := action.(type) {
+		case *actions.AddOrder:
+			if a.Quantity % utils.MinQuantity() != 0 {
+				return 0, errors.New("invalid quantity for order entered")
+			}
+	}
+	return 0, nil
 }
 
 func (e *EIP712) Payer() []byte {
 	return e.From[:]
+}
+
+func (e *EIP712) PublicKey() crypto.PublicKey {
+	return e.From
 }
 
 func (e *EIP712) CanDeduct(ctx context.Context, db chain.Database, amount uint64, tokenID ids.ID) error {
@@ -90,7 +102,6 @@ type EIP712Factory struct {
 
 func (d *EIP712Factory) Sign(msg []byte, a chain.Action) (chain.Auth, error) {
 	sig := crypto.Sign(msg, d.priv)
-	_, tokenID := a.Fee()
-	return &EIP712{sig, d.priv.PublicKey(), tokenID}, nil
+	return &EIP712{sig, d.priv.PublicKey(), a.Token()}, nil
 }
 

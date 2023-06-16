@@ -2,12 +2,11 @@ package orderbook
 
 import (
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/consts"
 )
 
-const EvictionBlockWindow = uint64(100)
-
 func (ob *Orderbook) AddToEviction(orderID ids.ID, blockHeight uint64) {
-	blockExpiry := blockHeight + EvictionBlockWindow
+	blockExpiry := blockHeight + consts.EvictionBlockWindow
 	if _, ok := ob.evictionMap[blockExpiry]; !ok {
 		ob.evictionMap[blockExpiry] = make(map[ids.ID]struct{})
 	}
@@ -32,7 +31,7 @@ func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt) {
 }
 
 func (obm *OrderbookManager) EvictAllPairs(blockNumber uint64, pendingAmounts *[]PendingAmt) {
-	for _, pair := range obm.pairs {
+	for pair := range obm.orderbooks {
 		ob := obm.orderbooks[pair]
 		ob.Evict(blockNumber, pendingAmounts)
 	}

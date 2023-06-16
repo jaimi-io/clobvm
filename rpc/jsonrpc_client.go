@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
@@ -22,12 +23,12 @@ type JSONRPCClient struct {
 
 func NewRPCClient(uri string, chainID ids.ID, g *genesis.Genesis) *JSONRPCClient {
 	uri = strings.TrimSuffix(uri, "/")
-	uri += JSONRPCEndpoint
+	uri += consts.JSONRPCEndpoint
 	req := requester.New(uri, "clobvm")
 	return &JSONRPCClient{req, chainID, g}
 }
 
-func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids.ID) (uint64, error) {
+func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids.ID) (float64, error) {
 	args := &BalanceArgs{
 		Address: address,
 		TokenID: tokenID,
@@ -46,7 +47,7 @@ func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (str
 	return reply.BuySide, reply.SellSide, err
 }
 
-func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64, error) {
+func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (float64, uint64, error) {
 	args := &PendingFundsArgs{
 		User:        user,
 		TokenID:     tokenID,

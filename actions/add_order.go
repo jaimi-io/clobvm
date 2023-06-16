@@ -6,12 +6,12 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
-	"github.com/jaimi-io/hypersdk/utils"
+	hutils "github.com/jaimi-io/hypersdk/utils"
 )
 
 type AddOrder struct {
@@ -22,7 +22,7 @@ type AddOrder struct {
 }
 
 func (ao *AddOrder) MaxUnits(r chain.Rules) uint64 {
-	return 1
+	return ao.Quantity / utils.MinQuantity()
 }
 
 func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
@@ -35,17 +35,27 @@ func (ao *AddOrder) amount() (uint64, ids.ID) {
 	return getAmount(ao.Quantity, ao.Price)
 }
 
-func (ao *AddOrder) StateKeys(cauth chain.Auth, txID ids.ID) [][]byte {
-	user := auth.GetUser(cauth)
+func (ao *AddOrder) StateKeys(auth chain.Auth, txID ids.ID) [][]byte {
+	user := auth.PublicKey()
 	return [][]byte{
 		storage.BalanceKey(user, ao.Pair.BaseTokenID),
 		storage.BalanceKey(user, ao.Pair.QuoteTokenID),
 	}
 }
 
-func (ao *AddOrder) Fee() (amount int64, tokenID ids.ID) {
+func (ao *AddOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+	obm := memoryState.(*orderbook.OrderbookManager)
+	if obm == nil {
+		return 0
+	}
+	user := auth.PublicKey()
+	amt, _ := ao.amount()
+	return obm.GetOrderbook(ao.Pair).GetFee(user, timestamp, amt)
+}
+
+func (ao *AddOrder) Token() (tokenID ids.ID) {
 	_, tokenID = ao.amount()
-	return 1, tokenID
+	return tokenID
 }
 
 func (ao *AddOrder) Execute(
@@ -53,30 +63,30 @@ func (ao *AddOrder) Execute(
 	r chain.Rules,
 	db chain.Database,
 	timestamp int64,
-	cauth chain.Auth,
+	auth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
 	blockHeight uint64,
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
-	user := auth.GetUser(cauth)
+	user := auth.PublicKey()
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
 	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
 
 	if ao.Quantity == 0 {
 		err = errors.New("amount cannot be zero")
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
 	amount, tokenID := ao.amount()
 	if err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	return &chain.Result{Success: true, Units: 0}, nil
+	return &chain.Result{Success: true, Units: ao.Quantity / utils.MinQuantity()}, nil
 }
 
 func (ao *AddOrder) Marshal(p *codec.Packer) {

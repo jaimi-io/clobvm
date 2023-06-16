@@ -5,6 +5,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/orderbook"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
@@ -24,7 +25,7 @@ type BalanceArgs struct {
 }
 
 type BalanceReply struct {
-	Balance uint64 `json:"balance"`
+	Balance float64 `json:"balance"`
 }
 
 func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *BalanceReply) error {
@@ -39,7 +40,7 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	if err != nil {
 		return err
 	}
-	reply.Balance = bal
+	reply.Balance = utils.DisplayBalance(bal)
 	return nil
 }
 
@@ -65,16 +66,16 @@ type PendingFundsArgs struct {
 	BlockHeight uint64           `json:"blockHeight"`
 }
 type PendingFundsReply struct {
-	Balance uint64     `json:"balance"`
+	Balance float64     `json:"balance"`
 	BlockHeight uint64 `json:"blockHeight"`
 }
 func (j *JSONRPCServer) PendingFunds(req *http.Request, args *PendingFundsArgs, reply *PendingFundsReply) error {
 	ctx, span := j.c.Tracer().Start(req.Context(), "Server.PendingFunds")
 	defer span.End()
 
-	var err error
-	reply.Balance, reply.BlockHeight = j.c.GetPendingFunds(ctx, args.User, args.TokenID, args.BlockHeight)
-	return err
+	bal, blkHgt := j.c.GetPendingFunds(ctx, args.User, args.TokenID, args.BlockHeight)
+	reply.Balance, reply.BlockHeight = utils.DisplayBalance(bal), blkHgt
+	return nil
 }
 
 type VolumesArgs struct {

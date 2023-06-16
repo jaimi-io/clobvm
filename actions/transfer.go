@@ -6,7 +6,6 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
-	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
@@ -29,16 +28,20 @@ func (t *Transfer) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (t *Transfer) StateKeys(cauth chain.Auth, _ ids.ID) [][]byte {
-	user := auth.GetUser(cauth)
+func (t *Transfer) StateKeys(auth chain.Auth, _ ids.ID) [][]byte {
+	user := auth.PublicKey()
 	return [][]byte{
 		storage.BalanceKey(user, t.TokenID),
 		storage.BalanceKey(t.To, t.TokenID),
 	}
 }
 
-func (t *Transfer) Fee() (amount int64, tokenID ids.ID) {
-	return 1, t.TokenID
+func (t *Transfer) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+	return 1
+}
+
+func (t *Transfer) Token() (tokenID ids.ID) {
+	return t.TokenID
 }
 
 func (t *Transfer) Execute(
@@ -46,13 +49,13 @@ func (t *Transfer) Execute(
 	r chain.Rules,
 	db chain.Database,
 	timestamp int64,
-	cauth chain.Auth,
+	auth chain.Auth,
 	txID ids.ID,
 	warpVerified bool,
 	memoryState any,
 	blockHeight uint64,
 ) (result *chain.Result, err error) {
-	user := auth.GetUser(cauth)
+	user := auth.PublicKey()
 	obm := memoryState.(*orderbook.OrderbookManager)
 	if err = storage.PullPendingBalance(ctx, db, obm, user, t.TokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
