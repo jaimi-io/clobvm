@@ -131,6 +131,7 @@ func (c *Controller) StateManager() chain.StateManager {
 }
 
 func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) error {
+	start := time.Now()
 	results := blk.Results()
 	var pendingAmounts []orderbook.PendingAmt
 	pendingAmtPtr := &pendingAmounts
@@ -176,6 +177,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			c.orderbookManager.AddPendingFunds(user, tokenID, balance, blk.Hght)
 		}
 	}
+	c.metrics.orderProcessing.Observe(float64(time.Since(start)))
 	return nil
 }
 
