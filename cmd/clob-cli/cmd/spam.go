@@ -21,7 +21,9 @@ import (
 	"github.com/jaimi-io/clobvm/orderbook"
 	trpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/utils"
+	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/crypto"
+	"github.com/jaimi-io/hypersdk/pubsub"
 	"github.com/jaimi-io/hypersdk/rpc"
 	hutils "github.com/jaimi-io/hypersdk/utils"
 	"github.com/spf13/cobra"
@@ -40,6 +42,13 @@ type txIssuer struct {
 
 	l              sync.Mutex
 	outstandingTxs int
+}
+type timeModifier struct {
+	Timestamp int64
+}
+
+func (t *timeModifier) Base(b *chain.Base) {
+	b.Timestamp = t.Timestamp
 }
 
 var balance = uint64(1_000_000) * utils.MinQuantity()
@@ -110,7 +119,7 @@ var transferSpamCmd = &cobra.Command{
 			avaxID,
 		)
 		accounts := make([]crypto.PrivateKey, numAccounts)
-		dcli, err := rpc.NewWebSocketClient(uris[0])
+		dcli, err := rpc.NewWebSocketClient(uris[0], 8_192, pubsub.MaxReadMessageSize)
 		if err != nil {
 			return err
 		}
@@ -177,7 +186,7 @@ var transferSpamCmd = &cobra.Command{
 		for i := 0; i < len(uris); i++ {
 			cli := rpc.NewJSONRPCClient(uris[i])
 			tcli := trpc.NewRPCClient(uris[i], chainID, genesis.New())
-			dcli, err := rpc.NewWebSocketClient(uris[i])
+			dcli, err := rpc.NewWebSocketClient(uris[i], 128_000, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
 			}
@@ -474,7 +483,7 @@ var orderSpamCmd = &cobra.Command{
 			avaxID,
 		)
 		accounts := make([]crypto.PrivateKey, numAccounts)
-		dcli, err := rpc.NewWebSocketClient(uris[0])
+		dcli, err := rpc.NewWebSocketClient(uris[0], 8_192, pubsub.MaxReadMessageSize)
 		if err != nil {
 			return err
 		}
@@ -487,7 +496,7 @@ var orderSpamCmd = &cobra.Command{
 		for i := 0; i < len(uris); i++ {
 			cli := rpc.NewJSONRPCClient(uris[i])
 			tcli := trpc.NewRPCClient(uris[i], chainID, genesis.New())
-			dcli, err := rpc.NewWebSocketClient(uris[i])
+			dcli, err := rpc.NewWebSocketClient(uris[i], 128_000, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
 			}
@@ -657,6 +666,7 @@ var orderSpamCmd = &cobra.Command{
 					funds[accounts[i].PublicKey()] = balance
 					fundsL.Unlock()
 				}()
+				ut := time.Now().Unix()
 				for {
 					select {
 					case <-t.C:
@@ -667,9 +677,16 @@ var orderSpamCmd = &cobra.Command{
 							continue
 						}
 
+						nextTime := time.Now().Unix()
+						if nextTime <= ut {
+							nextTime = ut + 1
+						}
+						ut = nextTime
+
 						// Send transaction
 						start := time.Now()
 						selected := map[crypto.PublicKey]uint64{}
+						tm := &timeModifier{nextTime + parser.Rules(nextTime).GetValidityWindow() - 3}
 						for a:=0; a<numAccounts; a++ {
 							selected[accounts[a].PublicKey()] = utils.MinQuantity()
 						}
@@ -689,7 +706,7 @@ var orderSpamCmd = &cobra.Command{
 								Price:    price,
 								Side:     side,
 								 // ensure txs are unique
-							}, factory, 0)
+							}, factory, 0, tm)
 							if err != nil {
 								hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
 								continue
@@ -709,7 +726,6 @@ var orderSpamCmd = &cobra.Command{
 						// Determine how long to sleep
 						dur := time.Since(start)
 						sleep := amath.Max(1000-dur.Milliseconds(), 0)
-						// hutils.Outf("{{yellow}}took :{{/}} %dms\n", dur)
 						t.Reset(time.Duration(sleep) * time.Millisecond)
 					case <-gctx.Done():
 						return gctx.Err()
