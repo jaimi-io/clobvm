@@ -20,5 +20,6 @@ func init() {
 	_ = ActionRegistry.Register(&actions.Transfer{}, actions.UnmarshalTransfer, false)
 	_ = ActionRegistry.Register(&actions.AddOrder{}, actions.UnmarshalAddOrder, false)
 	_ = ActionRegistry.Register(&actions.CancelOrder{}, actions.UnmarshalCancelOrder, false)
+	_ = ActionRegistry.Register(&actions.MarketOrder{}, actions.UnmarshalMarketOrder, false)
 	_ = AuthRegistry.Register(&auth.EIP712{}, auth.UnmarshalEIP712, false)
 }

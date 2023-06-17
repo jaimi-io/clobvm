@@ -49,3 +49,9 @@ func RefundTakerFee(monthlyExecuted uint64, amount uint64) uint64 {
 	refund := float64(amount) * refundRate
 	return uint64(math.Ceil(refund))
 }
+
+func RefundTakerMarketOrderFee(monthlyExecuted uint64, amount uint64) uint64 {
+	_, takerRate := getFeeRates(monthlyExecuted)
+	refund := float64(amount) * takerRate
+	return uint64(math.Ceil(refund))
+}

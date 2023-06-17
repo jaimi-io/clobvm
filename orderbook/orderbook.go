@@ -18,6 +18,8 @@ type Orderbook struct {
 	maxHeap *heap.PriorityQueueHeap[*Order, uint64]
 
 	orderMap map[ids.ID]*Order
+	buySideVolume uint64
+	sellSideVolume uint64
 	volumeMap map[uint64]uint64
 	evictionMap map[uint64]map[ids.ID]struct{}
 	executionHistory map[crypto.PublicKey]*MonthlyExecuted
@@ -35,7 +37,17 @@ func NewOrderbook(pair Pair) *Orderbook {
 	}
 }
 
-func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
+func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, marketOrder bool, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
+	fmt.Printf("Add order: %v\n", order)
+	fmt.Printf("Orderbook: %v\n", ob)
+	if marketOrder && ((order.Side && ob.sellSideVolume < order.Quantity) || (!order.Side && ob.buySideVolume < order.Quantity)) {
+		feeToReturn := ob.RefundMarketOrderFee(order.User, blockTs, order.Quantity)
+		if feeToReturn > 0 {
+			order.Price = ob.GetMidPrice()
+			ob.toPendingAmount(order, feeToReturn, false, pendingAmounts)
+		}
+		return
+	}
 	ob.matchOrder(order, blockTs, pendingAmounts, metrics)
 	if order.Quantity > 0 {
 		feeToReturn := ob.RefundFee(order.User, blockTs, order.Quantity)
@@ -50,8 +62,10 @@ func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendin
 
 		if order.Side {
 			ob.maxHeap.Add(order, order.ID, order.Price)
+			ob.buySideVolume += order.Quantity
 		} else {
 			ob.minHeap.Add(order, order.ID, order.Price)
+			ob.sellSideVolume += order.Quantity
 		}
 
 		metrics.OrderNumInc()
@@ -76,6 +90,11 @@ func (ob *Orderbook) Cancel(order *Order, pendingAmounts *[]PendingAmt, metrics 
 
 func (ob *Orderbook) Remove(order *Order, metrics *metrics.Metrics) {
 	ob.volumeMap[order.Price] -= order.Quantity
+	if order.Side {
+		ob.buySideVolume -= order.Quantity
+	} else {
+		ob.sellSideVolume -= order.Quantity
+	}
 	delete(ob.orderMap, order.ID)
 	delete(ob.evictionMap[order.BlockExpiry], order.ID)
 	metrics.OrderNumDec()

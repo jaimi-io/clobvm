@@ -104,3 +104,11 @@ func (ob *Orderbook) RefundFee(user crypto.PublicKey, timestamp int64, quantity 
 	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
 	return RefundTakerFee(monthlyExecuted, quantity)
 }
+
+func (ob *Orderbook) RefundMarketOrderFee(user crypto.PublicKey, timestamp int64, quantity uint64) uint64 {
+	if _, ok := ob.executionHistory[user]; !ok {
+		return RefundTakerMarketOrderFee(0, quantity)
+	}
+	monthlyExecuted := ob.executionHistory[user].getMonthlyExecuted(timestamp)
+	return RefundTakerMarketOrderFee(monthlyExecuted, quantity)
+}

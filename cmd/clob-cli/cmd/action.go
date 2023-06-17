@@ -135,6 +135,65 @@ var addOrderCmd = &cobra.Command{
 	},
 }
 
+var marketOrderCmd = &cobra.Command{
+	Use: "market-order",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, authFactory, cli, tcli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+		// baseTokenID, err := promptToken("base")
+		// if err != nil {
+		// 	return err
+		// }
+
+		// quoteTokenID, err := promptToken("quote")
+		// if err != nil {
+		// 	return err
+		// }
+		baseTokenID, quoteTokenID := getTokens()
+		
+		quantity, err := promptAmount("quantity", consts.BalanceDecimals)
+		if err != nil {
+			return err
+		}
+
+		side, err := promptBool("side")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := promptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		parser, err := tcli.Parser(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Generate transaction
+		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.MarketOrder{
+			Pair: orderbook.Pair{
+				BaseTokenID: baseTokenID,
+				QuoteTokenID: quoteTokenID,
+			},
+			Quantity: quantity,
+			Side: side,
+		}, authFactory)
+		if err != nil {
+			return err
+		}
+		if err := submit(ctx); err != nil {
+			return err
+		}
+		return nil
+	},
+}
+
 var cancelOrderCmd = &cobra.Command{
 	Use: "cancel-order",
 	RunE: func(*cobra.Command, []string) error {

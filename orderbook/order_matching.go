@@ -44,6 +44,7 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 		heap = ob.maxHeap
 	}
 	matchPriceFn := getMatchPriceFn(order.Side)
+	var filled uint64
 	prevQuantity := order.Quantity
 	isFilled := true
 
@@ -60,6 +61,7 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 			}
 			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
 			ob.addExec(takerOrder.User, blockTs, toFill)
+			filled += takerOrder.Price * toFill
 			metrics.OrderAmountSub(toFill)
 			metrics.OrderFillsNum()
 			metrics.OrderFillsAmount(toFill)
@@ -71,7 +73,10 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 	}
 	if prevQuantity > order.Quantity {
 		filledQuantity := prevQuantity - order.Quantity
+		oldOrderPrice := order.Price
+		order.Price = filled / filledQuantity
 		ob.toPendingAmount(order, filledQuantity, isFilled, pendingAmounts)
+		order.Price = oldOrderPrice
 		ob.addExec(order.User, blockTs, filledQuantity)
 		metrics.OrderFillsNum()
 		metrics.OrderFillsAmount(filledQuantity)
