@@ -264,7 +264,6 @@ var transferSpamCmd = &cobra.Command{
 		}()
 
 		// broadcast txs
-		unitPrice, _, err := clients[0].c.SuggestedRawFee(ctx)
 		if err != nil {
 			return err
 		}
@@ -309,7 +308,7 @@ var transferSpamCmd = &cobra.Command{
 								To:    recipient,
 								TokenID: avaxID,
 								Amount: uint64(v), // ensure txs are unique
-							}, factory, unitPrice)
+							}, factory, 0)
 							if err != nil {
 								hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
 								continue
@@ -638,7 +637,6 @@ var orderSpamCmd = &cobra.Command{
 		}()
 
 		// broadcast txs
-		unitPrice, _, err := clients[0].c.SuggestedRawFee(ctx)
 		if err != nil {
 			return err
 		}
@@ -678,20 +676,20 @@ var orderSpamCmd = &cobra.Command{
 						for k := 0; k < numTxsPerAccount; k++ {
 							v := selected[accounts[i].PublicKey()] + utils.MinQuantity()
 							selected[accounts[i].PublicKey()] = v
-							side := v%2 == 0
+							side := k%2 == 0
 							var price uint64
 							if side {
-								price = buyPrices[v%5]
+								price = buyPrices[k%5]
 							} else {
-								price = sellPrices[v%5]
+								price = sellPrices[k%5]
 							}
 							_, tx, fees, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
 								Pair:     pair,
 								Quantity: v,
 								Price:    price,
-								Side:     v % 2 == 0,
+								Side:     side,
 								 // ensure txs are unique
-							}, factory, unitPrice)
+							}, factory, 0)
 							if err != nil {
 								hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
 								continue
