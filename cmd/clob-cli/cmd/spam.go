@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ava-labs/avalanchego/ids"
 	amath "github.com/ava-labs/avalanchego/utils/math"
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
@@ -22,6 +24,7 @@ import (
 	trpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
+	"github.com/jaimi-io/hypersdk/codec"
 	"github.com/jaimi-io/hypersdk/crypto"
 	"github.com/jaimi-io/hypersdk/pubsub"
 	"github.com/jaimi-io/hypersdk/rpc"
@@ -78,6 +81,23 @@ func getRandomRecipient(self int, keys []crypto.PrivateKey) (crypto.PublicKey, e
 	// 	}
 	// }
 	// return keys[index].PublicKey(), nil
+}
+
+type BalanceUpdate struct {
+	BaseTokenUser  crypto.PublicKey
+	BaseBalance	   uint64
+	QuoteTokenUser crypto.PublicKey
+	QuoteBalance	 uint64
+}
+
+func getBalanceUpdate(output []byte) *BalanceUpdate {
+	p := codec.NewReader(output, math.MaxInt)
+	balUp := &BalanceUpdate{}
+	p.UnpackPublicKey(true, &balUp.BaseTokenUser)
+	balUp.BaseBalance = p.UnpackUint64(false)
+	p.UnpackPublicKey(true, &balUp.QuoteTokenUser)
+	balUp.QuoteBalance = p.UnpackUint64(false)
+	return balUp
 }
 
 func getRandomIssuer(issuers []*txIssuer) *txIssuer {
@@ -149,7 +169,6 @@ var transferSpamCmd = &cobra.Command{
 			if err := dcli.RegisterTx(tx); err != nil {
 				return err
 			}
-			funds[pk.PublicKey()] = distAmount
 
 			// Ensure Snowman++ is activated
 			if i < 10 {
@@ -169,6 +188,9 @@ var transferSpamCmd = &cobra.Command{
 				// Should never happen
 				return errors.New("failed to return funds")
 			}
+			balUp := getBalanceUpdate(result.Output)
+			funds[balUp.BaseTokenUser] = balUp.BaseBalance
+			funds[balUp.QuoteTokenUser] = balUp.QuoteBalance
 		}
 		hutils.Outf("{{yellow}}distributed funds to %d accounts{{/}}\n", numAccounts)
 		signals := make(chan os.Signal, 2)
@@ -216,6 +238,11 @@ var transferSpamCmd = &cobra.Command{
 					if result != nil {
 						if result.Success {
 							confirmedTxs++
+							balUp := getBalanceUpdate(result.Output)
+							fundsL.Lock()
+							funds[balUp.BaseTokenUser] = balUp.BaseBalance
+							funds[balUp.QuoteTokenUser] = balUp.QuoteBalance
+							fundsL.Unlock()
 						} else {
 							hutils.Outf("{{orange}}on-chain tx failure:{{/}} %s %t\n", string(result.Output), result.Success)
 						}
@@ -288,11 +315,6 @@ var transferSpamCmd = &cobra.Command{
 				fundsL.Lock()
 				balance := funds[accounts[i].PublicKey()]
 				fundsL.Unlock()
-				defer func() {
-					fundsL.Lock()
-					funds[accounts[i].PublicKey()] = balance
-					fundsL.Unlock()
-				}()
 				for {
 					select {
 					case <-t.C:
@@ -487,7 +509,7 @@ var orderSpamCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		funds := map[crypto.PublicKey]uint64{}
+		funds := map[crypto.PublicKey]map[ids.ID]uint64{}
 		parser, err := tcli.Parser(ctx)
 		if err != nil {
 			return err
@@ -502,6 +524,7 @@ var orderSpamCmd = &cobra.Command{
 			}
 			clients[i] = &txIssuer{c: cli, tc: tcli, d: dcli}
 		}
+		funds[key.PublicKey()] = make(map[ids.ID]uint64)
 		var fundsL sync.Mutex
 		for i := 0; i < numAccounts; i++ {
 			// Create account
@@ -510,6 +533,7 @@ var orderSpamCmd = &cobra.Command{
 				return err
 			}
 			accounts[i] = pk
+			funds[pk.PublicKey()] = make(map[ids.ID]uint64)
 
 			// Send funds
 			_, tx, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.Transfer{
@@ -523,25 +547,13 @@ var orderSpamCmd = &cobra.Command{
 			if err := dcli.RegisterTx(tx); err != nil {
 				return err
 			}
-			_, tx, _, err = cli.GenerateTransaction(ctx, parser, nil, &actions.Transfer{
-				To:    pk.PublicKey(),
-				TokenID: usdcID,
-				Amount: distAmount,
-			}, factory)
-			if err != nil {
-				return err
-			}
-			if err := dcli.RegisterTx(tx); err != nil {
-				return err
-			}
-			funds[pk.PublicKey()] = distAmount
 
 			// Ensure Snowman++ is activated
 			if i < 10 {
 				time.Sleep(500 * time.Millisecond)
 			}
 		}
-		for i := 0; i < numAccounts * 2; i++ {
+		for i := 0; i < numAccounts; i++ {
 			_, dErr, result, err := dcli.ListenTx(ctx)
 			if err != nil {
 				return err
@@ -553,8 +565,50 @@ var orderSpamCmd = &cobra.Command{
 				// Should never happen
 				return errors.New("failed to return funds")
 			}
+			balUp := getBalanceUpdate(result.Output)
+			funds[balUp.BaseTokenUser][avaxID] = balUp.BaseBalance
+			funds[balUp.QuoteTokenUser][avaxID] = balUp.QuoteBalance
 		}
-		hutils.Outf("{{yellow}}distributed funds to %d accounts{{/}}\n", numAccounts)
+		hutils.Outf("{{yellow}}distributed avax funds to %d accounts{{/}}\n", numAccounts)
+
+		for i := 0; i < numAccounts; i++ {
+			// Create account
+			pk := accounts[i]
+
+			_, tx, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.Transfer{
+				To:    pk.PublicKey(),
+				TokenID: usdcID,
+				Amount: distAmount,
+			}, factory)
+			if err != nil {
+				return err
+			}
+			if err := dcli.RegisterTx(tx); err != nil {
+				return err
+			}
+
+			// Ensure Snowman++ is activated
+			if i < 10 {
+				time.Sleep(500 * time.Millisecond)
+			}
+		}
+		for i := 0; i < numAccounts; i++ {
+			_, dErr, result, err := dcli.ListenTx(ctx)
+			if err != nil {
+				return err
+			}
+			if dErr != nil {
+				return dErr
+			}
+			if !result.Success {
+				// Should never happen
+				return errors.New("failed to return funds")
+			}
+			balUp := getBalanceUpdate(result.Output)
+			funds[balUp.BaseTokenUser][usdcID] = balUp.BaseBalance
+			funds[balUp.QuoteTokenUser][usdcID] = balUp.QuoteBalance
+		}
+		hutils.Outf("{{yellow}}distributed usdc funds to %d accounts{{/}}\n", numAccounts)
 		signals := make(chan os.Signal, 2)
 		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 		var (
@@ -579,6 +633,7 @@ var orderSpamCmd = &cobra.Command{
 				for {
 					_, dErr, result, err := issuer.d.ListenTx(context.TODO())
 					if err != nil {
+						fmt.Println(err)
 						return
 					}
 					inflight.Add(-1)
@@ -589,6 +644,15 @@ var orderSpamCmd = &cobra.Command{
 					if result != nil {
 						if result.Success {
 							confirmedTxs++
+							balUp := getBalanceUpdate(result.Output)
+							fundsL.Lock()
+							if balUp.BaseBalance > 0 {
+								funds[balUp.BaseTokenUser][avaxID] = balUp.BaseBalance
+							}
+							if balUp.QuoteBalance > 0 {
+								funds[balUp.QuoteTokenUser][usdcID] = balUp.QuoteBalance
+							}
+							fundsL.Unlock()
 						} else {
 							hutils.Outf("{{orange}}on-chain tx failure:{{/}} %s %t\n", string(result.Output), result.Success)
 						}
@@ -661,11 +725,6 @@ var orderSpamCmd = &cobra.Command{
 				fundsL.Lock()
 				balance := funds[accounts[i].PublicKey()]
 				fundsL.Unlock()
-				defer func() {
-					fundsL.Lock()
-					funds[accounts[i].PublicKey()] = balance
-					fundsL.Unlock()
-				}()
 				ut := time.Now().Unix()
 				for {
 					select {
@@ -716,7 +775,11 @@ var orderSpamCmd = &cobra.Command{
 								hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
 								continue
 							}
-							balance -= (fees + uint64(v))
+							if side {
+								balance[usdcID] -= (fees + v * price)
+							} else {
+								balance[avaxID] -= (fees + v)
+							}
 							issuer.l.Lock()
 							issuer.outstandingTxs++
 							issuer.l.Unlock()
@@ -769,17 +832,18 @@ var orderSpamCmd = &cobra.Command{
 		// Return funds
 		hutils.Outf("{{yellow}}returning funds to %s{{/}}\n", crypto.Address("clob", key.PublicKey()))
 		var (
-			returnedBalance uint64
+			returnedAvaxBalance uint64
+			returnedUsdcBalance uint64
 			returnsSent     int
 		)
 		for i := 0; i < numAccounts; i++ {
-			balance := funds[accounts[i].PublicKey()]
-			if transferFee > balance {
+			avaxBalance := funds[accounts[i].PublicKey()][avaxID]
+			if transferFee > avaxBalance {
 				continue
 			}
 			returnsSent++
 			// Send funds
-			returnAmt := balance - transferFee
+			returnAmt := avaxBalance - transferFee
 			_, tx, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.Transfer{
 				To:    key.PublicKey(),
 				TokenID: avaxID,
@@ -791,6 +855,14 @@ var orderSpamCmd = &cobra.Command{
 			if err := dcli.RegisterTx(tx); err != nil {
 				return err
 			}
+			returnedAvaxBalance += returnAmt
+
+			usdcBalance := funds[accounts[i].PublicKey()][usdcID]
+			if transferFee > avaxBalance {
+				continue
+			}
+			returnsSent++
+			returnAmt = usdcBalance - transferFee
 			_, tx, _, err = cli.GenerateTransaction(ctx, parser, nil, &actions.Transfer{
 				To:    key.PublicKey(),
 				TokenID: usdcID,
@@ -802,7 +874,7 @@ var orderSpamCmd = &cobra.Command{
 			if err := dcli.RegisterTx(tx); err != nil {
 				return err
 			}
-			returnedBalance += returnAmt
+			returnedUsdcBalance += returnAmt
 
 			// Ensure Snowman++ is activated
 			if i < 10 {
@@ -824,8 +896,13 @@ var orderSpamCmd = &cobra.Command{
 		}
 		hutils.Outf(
 			"{{yellow}}returned funds:{{/}} %s %s\n",
-			returnedBalance,
+			returnedAvaxBalance,
 			avaxID,
+		)
+		hutils.Outf(
+			"{{yellow}}returned funds:{{/}} %s %s\n",
+			returnedUsdcBalance,
+			usdcID,
 		)
 		return nil
 	},
