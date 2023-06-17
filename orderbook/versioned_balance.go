@@ -35,20 +35,20 @@ func (vb *VersionedBalance) Get(blockHeight uint64) (uint64, uint64) {
 	var balance uint64
 
 	cur := vb.items
-	for i := 0; i < vb.items.Len() - 1 && cur.Value != nil; i++ {
-		item := cur.Value.(*VersionedItem)
-		if item.blkHgt <= blockHeight {
-			balance = item.bal
-			break
-		}
+	for i := 0; i < vb.items.Len() && cur.Value != nil && cur.Value.(*VersionedItem).blkHgt > blockHeight; i++ {
 		cur = cur.Prev()
+	}
+
+	if cur.Value != nil {
+		balance = cur.Value.(*VersionedItem).bal
 	}
 
 	return balance, blockHeight
 }
 
 func (vb *VersionedBalance) Pull(blockHeight uint64) uint64 {
-	if blockHeight > vb.lastBlockHeight {
+	if blockHeight >= vb.lastBlockHeight {
+		vb.items.Value = nil
 		res := vb.lastBalance
 		vb.lastBalance = 0
 		return res
@@ -56,19 +56,20 @@ func (vb *VersionedBalance) Pull(blockHeight uint64) uint64 {
 	var balance uint64
 
 	cur := vb.items
-	for i := 0; i < vb.items.Len() - 1 && cur.Value != nil; i++ {
-		item := cur.Value.(*VersionedItem)
-		if item.blkHgt <= blockHeight {
-			balance = item.bal
-			break
-		}
+	for i := 0; i < vb.items.Len() && cur.Value != nil && cur.Value.(*VersionedItem).blkHgt > blockHeight; i++ {
 		cur = cur.Prev()
 	}
 
-	for cur != vb.items && cur.Next().Value != nil {
-		cur = cur.Next()
+	if cur.Value != nil {
+		balance = cur.Value.(*VersionedItem).bal
+		cur.Value = nil
+	}
+
+	cur = vb.items
+	for cur.Value != nil {
 		item := cur.Value.(*VersionedItem)
 		item.bal -= balance
+		cur = cur.Prev()
 	}
 
 	vb.lastBalance -= balance
