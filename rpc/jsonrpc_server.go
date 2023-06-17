@@ -44,6 +44,26 @@ func (j *JSONRPCServer) Balance(req *http.Request, args *BalanceArgs, reply *Bal
 	return nil
 }
 
+type MidPriceArgs struct {
+	Pair orderbook.Pair `json:"pair"`
+}
+
+type MidPriceReply struct {
+	MidPrice float64 `json:"midPrice"`
+}
+
+func (j *JSONRPCServer) MidPrice(req *http.Request, args *MidPriceArgs, reply *MidPriceReply) error {
+	ctx, span := j.c.Tracer().Start(req.Context(), "Server.MidPrice")
+	defer span.End()
+	
+	midPrice, err := j.c.GetMidPrice(ctx, args.Pair)
+	if err != nil {
+		return err
+	}
+	reply.MidPrice = utils.DisplayPrice(midPrice)
+	return nil
+}
+
 type AllOrdersArgs struct {
 	Pair orderbook.Pair `json:"pair"`
 }

@@ -86,6 +86,15 @@ func (ob *Orderbook) GetBuySide() [][]*Order {
 	return ob.maxHeap.Values()
 }
 
+func (ob *Orderbook) GetMidPrice() uint64 {
+	if ob.maxHeap.Len() == 0 || ob.minHeap.Len() == 0 {
+		return 0
+	}
+	maxQueue := ob.maxHeap.Peek()
+	minQueue := ob.minHeap.Peek()
+	return (maxQueue.Priority() + minQueue.Priority()) / 2
+}
+
 func (ob *Orderbook) GetSellSide() [][]*Order {
 	return ob.minHeap.Values()
 }

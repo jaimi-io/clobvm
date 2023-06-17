@@ -24,6 +24,16 @@ func (c *Controller) GetOrderbook(ctx context.Context, pair orderbook.Pair) (str
 	return fmt.Sprint(buySide), fmt.Sprint(sellSide), nil
 }
 
+func (c *Controller) GetMidPrice(ctx context.Context, pair orderbook.Pair) (uint64, error) {
+	ob := c.orderbookManager.GetOrderbook(pair)
+	if ob == nil {
+		return 0, fmt.Errorf("orderbook not found for pair %s", pair)
+	}
+	midPrice := ob.GetMidPrice()
+	return midPrice, nil
+}
+
+
 func (c *Controller) GetPendingFunds(ctx context.Context, user crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, uint64) {
 	return c.orderbookManager.GetPendingFunds(user, tokenID, blockHeight)
 }

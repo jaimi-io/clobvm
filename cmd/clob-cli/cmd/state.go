@@ -14,14 +14,16 @@ var balanceCmd = &cobra.Command{
 	Use: "balance",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, _, _, _, cli, err := defaultActor()
+		_, key, _, _, cli, err := defaultActor()
 		if err != nil {
 			return err
 		}
-		addr, err := promptAddress("address")
-		if err != nil {
-			return err
-		}
+
+		addr := key.PublicKey()
+		// addr, err := promptAddress("address")
+		// if err != nil {
+		// 	return err
+		// }
 		tokenID, err := promptToken("")
 		if err != nil {
 			return err
@@ -32,6 +34,27 @@ var balanceCmd = &cobra.Command{
 		}
 		format := "balance: %." + fmt.Sprint(consts.BalanceDecimals) + "f\n"
 		fmt.Printf(format, bal)
+		return nil
+	},
+}
+
+var midPriceCmd = &cobra.Command{
+	Use: "mid-price",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, _, _, cli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+
+		baseTokenID, quoteTokenID := getTokens()
+		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
+		
+		midPrice, err := cli.MidPrice(ctx, pair)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("mid price: %f\n", midPrice)
 		return nil
 	},
 }
