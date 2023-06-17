@@ -38,7 +38,7 @@ func (co *CancelOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (a
 	return 1
 }
 
-func (co *CancelOrder) Token() (tokenID ids.ID) {
+func (co *CancelOrder) Token(memoryState any) (tokenID ids.ID) {
 	return co.Pair.QuoteTokenID
 }
 

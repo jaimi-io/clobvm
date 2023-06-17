@@ -41,7 +41,7 @@ func (t *Transfer) Fee(timestamp int64, auth chain.Auth, memoryState any) (amoun
 	return 1
 }
 
-func (t *Transfer) Token() (tokenID ids.ID) {
+func (t *Transfer) Token(memoryState any) (tokenID ids.ID) {
 	return t.TokenID
 }
 

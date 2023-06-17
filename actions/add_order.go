@@ -55,7 +55,7 @@ func (ao *AddOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amou
 	return obm.GetOrderbook(ao.Pair).GetFee(user, timestamp, amt)
 }
 
-func (ao *AddOrder) Token() (tokenID ids.ID) {
+func (ao *AddOrder) Token(memoryState any) (tokenID ids.ID) {
 	_, tokenID = ao.amount()
 	return tokenID
 }
