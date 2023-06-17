@@ -16,7 +16,6 @@ import (
 type CancelOrder struct {
 	Pair    orderbook.Pair `json:"pair"`
 	OrderID ids.ID  	     `json:"orderID"`
-	Side    bool 			     `json:"side"`
 }
 
 func (co *CancelOrder) MaxUnits(r chain.Rules) uint64 {
@@ -40,7 +39,7 @@ func (co *CancelOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (a
 }
 
 func (co *CancelOrder) Token() (tokenID ids.ID) {
-	return co.Pair.TokenID(co.Side)
+	return co.Pair.QuoteTokenID
 }
 
 func (co *CancelOrder) Execute(
@@ -72,7 +71,6 @@ func (co *CancelOrder) Marshal(p *codec.Packer) {
 	p.PackID(co.Pair.BaseTokenID)
 	p.PackID(co.Pair.QuoteTokenID)
 	p.PackID(co.OrderID)
-	p.PackBool(co.Side)
 }
 
 func UnmarshalCancelOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
@@ -80,6 +78,5 @@ func UnmarshalCancelOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error
 	p.UnpackID(true, &co.Pair.BaseTokenID)
 	p.UnpackID(true, &co.Pair.QuoteTokenID)
 	p.UnpackID(true, &co.OrderID)
-	co.Side = p.UnpackBool()
 	return &co, p.Err()
 }

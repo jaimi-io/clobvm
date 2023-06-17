@@ -159,11 +159,6 @@ var cancelOrderCmd = &cobra.Command{
 			return err
 		}
 
-		side, err := promptBool("side")
-		if err != nil {
-			return err
-		}
-
 		// Confirm action
 		cont, err := promptContinue()
 		if !cont || err != nil {
@@ -182,7 +177,6 @@ var cancelOrderCmd = &cobra.Command{
 				QuoteTokenID: quoteTokenID,
 			},
 			OrderID: orderID,
-			Side: side,
 		}, authFactory)
 		if err != nil {
 			return err
