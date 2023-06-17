@@ -17,7 +17,6 @@ import (
 type EIP712 struct {
 	Signature crypto.Signature
 	From 		  crypto.PublicKey
-	TokenID	 ids.ID
 }
 
 func (e *EIP712) MaxUnits(r chain.Rules) uint64 {
@@ -29,9 +28,7 @@ func (e *EIP712) ValidRange(r chain.Rules) (start int64, end int64) {
 }
 
 func (e *EIP712) StateKeys() [][]byte {
-	return [][]byte{
-		storage.BalanceKey(e.From, e.TokenID),
-	}
+	return [][]byte{}
 }
 
 func (e *EIP712) AsyncVerify(msg []byte) error {
@@ -83,14 +80,12 @@ func (e *EIP712) Refund(ctx context.Context, db chain.Database, amount uint64, t
 func (e *EIP712) Marshal(p *codec.Packer) {
 	p.PackSignature(e.Signature)
 	p.PackPublicKey(e.From)
-	p.PackID(e.TokenID)
 }
 
 func UnmarshalEIP712(p *codec.Packer, _ *warp.Message) (chain.Auth, error) {
 	var d EIP712
 	p.UnpackSignature(&d.Signature)
 	p.UnpackPublicKey(true, &d.From)
-	p.UnpackID(true, &d.TokenID)
 	return &d, p.Err()
 }
 
@@ -104,6 +99,6 @@ type EIP712Factory struct {
 
 func (d *EIP712Factory) Sign(msg []byte, a chain.Action) (chain.Auth, error) {
 	sig := crypto.Sign(msg, d.priv)
-	return &EIP712{sig, d.priv.PublicKey(), a.Token()}, nil
+	return &EIP712{sig, d.priv.PublicKey()}, nil
 }
 
