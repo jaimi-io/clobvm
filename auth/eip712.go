@@ -71,11 +71,13 @@ func (e *EIP712) CanDeduct(ctx context.Context, db chain.Database, amount uint64
 }
 
 func (e *EIP712) Deduct(ctx context.Context, db chain.Database, amount uint64, tokenID ids.ID) error {
-	return storage.DecBalance(ctx, db, e.From, tokenID, amount)
+	_, err := storage.DecBalance(ctx, db, e.From, tokenID, amount)
+	return err
 }
 
 func (e *EIP712) Refund(ctx context.Context, db chain.Database, amount uint64, tokenID ids.ID) error {
-	return storage.IncBalance(ctx, db, e.From, tokenID, amount)
+	_, err := storage.IncBalance(ctx, db, e.From, tokenID, amount)
+	return err
 }
 
 func (e *EIP712) Marshal(p *codec.Packer) {

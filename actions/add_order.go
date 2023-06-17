@@ -73,22 +73,30 @@ func (ao *AddOrder) Execute(
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
 	user := auth.PublicKey()
-	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
-	}
-	if err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
-	}
-
+	var baseBalance uint64
+	var quoteBalance uint64
 	if ao.Quantity == 0 {
 		err = errors.New("amount cannot be zero")
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	amount, tokenID := ao.amount()
-	if err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
+	if baseBalance, err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.BaseTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	return &chain.Result{Success: true, Units: ao.Quantity / utils.MinQuantity()}, nil
+	if quoteBalance, err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
+	}
+	amount, tokenID := ao.amount()
+	var decBalance uint64
+	if decBalance, err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
+	}
+	if tokenID == ao.Pair.BaseTokenID {
+		baseBalance = decBalance
+	} else {
+		quoteBalance = decBalance
+	}
+	output := utils.PackUpdatedBalance(user, baseBalance, user, quoteBalance)
+	return &chain.Result{Success: true, Units: ao.Quantity / utils.MinQuantity(), Output: output}, nil
 }
 
 func (ao *AddOrder) Marshal(p *codec.Packer) {

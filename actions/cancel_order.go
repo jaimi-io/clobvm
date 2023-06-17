@@ -7,9 +7,10 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
-	"github.com/jaimi-io/hypersdk/utils"
+	hutils "github.com/jaimi-io/hypersdk/utils"
 )
 
 type CancelOrder struct {
@@ -55,13 +56,16 @@ func (co *CancelOrder) Execute(
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
 	user := auth.PublicKey()
-	if err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.BaseTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+	var baseBalance uint64
+	var quoteBalance uint64
+	if baseBalance, err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.BaseTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	if err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.QuoteTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+	if quoteBalance, err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.QuoteTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	return &chain.Result{Success: true, Units: 0}, nil
+	output := utils.PackUpdatedBalance(user, baseBalance, user, quoteBalance)
+	return &chain.Result{Success: true, Units: 0, Output: output}, nil
 }
 
 func (co *CancelOrder) Marshal(p *codec.Packer) {

@@ -8,10 +8,11 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
 	"github.com/jaimi-io/hypersdk/crypto"
-	"github.com/jaimi-io/hypersdk/utils"
+	hutils "github.com/jaimi-io/hypersdk/utils"
 )
 
 type Transfer struct {
@@ -57,20 +58,23 @@ func (t *Transfer) Execute(
 ) (result *chain.Result, err error) {
 	user := auth.PublicKey()
 	obm := memoryState.(*orderbook.OrderbookManager)
-	if err = storage.PullPendingBalance(ctx, db, obm, user, t.TokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
-	}
+	var baseBalance uint64
+	var quoteBalance uint64
 	if t.Amount == 0 {
 		err = errors.New("amount cannot be zero")
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	if err = storage.DecBalance(ctx, db, user, t.TokenID, t.Amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+	if baseBalance, err = storage.PullPendingBalance(ctx, db, obm, user, t.TokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	if err = storage.IncBalance(ctx, db, t.To, t.TokenID, t.Amount); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+	if baseBalance, err = storage.DecBalance(ctx, db, user, t.TokenID, t.Amount); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	return &chain.Result{Success: true, Units: 0}, nil
+	if quoteBalance, err = storage.IncBalance(ctx, db, t.To, t.TokenID, t.Amount); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
+	}
+	output := utils.PackUpdatedBalance(user, baseBalance, t.To, quoteBalance)
+	return &chain.Result{Success: true, Units: 0, Output: output}, nil
 }
 
 func (t *Transfer) Marshal(p *codec.Packer) {
