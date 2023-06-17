@@ -4,7 +4,7 @@ import "time"
 
 const (
 	EvictionBlockWindow = uint64(1000)
-	PendingBlockWindow  = uint64(2)
+	PendingBlockWindow  = uint64(7)
 	ExecHistoryWindow   = 100 // s
 
 	BalanceDecimals  = 9

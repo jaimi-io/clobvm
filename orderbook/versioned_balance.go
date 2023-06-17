@@ -19,7 +19,7 @@ type VersionedBalance struct {
 
 
 func NewVersionedBalance(balance uint64, blockHeight uint64) *VersionedBalance {
-	items := ring.New(int(consts.PendingBlockWindow))
+	items := ring.New(int(consts.PendingBlockWindow+1))
 	items.Value = &VersionedItem{balance, blockHeight}
 	return &VersionedBalance{
 		items: items,
