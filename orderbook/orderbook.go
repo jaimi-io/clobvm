@@ -77,7 +77,8 @@ func (ob *Orderbook) Cancel(order *Order, pendingAmounts *[]PendingAmt, metrics 
 func (ob *Orderbook) Remove(order *Order, metrics *metrics.Metrics) {
 	ob.volumeMap[order.Price] -= order.Quantity
 	delete(ob.orderMap, order.ID)
-	metrics.OrderNumInc()
+	delete(ob.evictionMap[order.BlockExpiry], order.ID)
+	metrics.OrderNumDec()
 	metrics.OrderAmountSub(order.Quantity)
 }
 

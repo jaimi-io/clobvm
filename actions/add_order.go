@@ -6,6 +6,7 @@ import (
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/clobvm/utils"
@@ -15,10 +16,11 @@ import (
 )
 
 type AddOrder struct {
-	Pair     orderbook.Pair `json:"pair"`
-	Quantity uint64  	      `json:"quantity"`
-	Price    uint64  		    `json:"price"`
-	Side     bool 			    `json:"side"`
+	Pair              orderbook.Pair `json:"pair"`
+	Quantity          uint64         `json:"quantity"`
+	Price             uint64         `json:"price"`
+	Side              bool           `json:"side"`
+	BlockExpiryWindow uint64         `json:"blockExpiryWindow"`
 }
 
 func (ao *AddOrder) MaxUnits(r chain.Rules) uint64 {
@@ -95,6 +97,7 @@ func (ao *AddOrder) Marshal(p *codec.Packer) {
 	p.PackUint64(ao.Quantity)
 	p.PackUint64(ao.Price)
 	p.PackBool(ao.Side)
+	p.PackUint64(ao.BlockExpiryWindow)
 }
 
 func UnmarshalAddOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
@@ -104,5 +107,9 @@ func UnmarshalAddOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	ao.Quantity = p.UnpackUint64(true)
 	ao.Price = p.UnpackUint64(true)
 	ao.Side = p.UnpackBool()
+	ao.BlockExpiryWindow = p.UnpackUint64(false)
+	if ao.BlockExpiryWindow == 0 {
+		ao.BlockExpiryWindow = consts.EvictionBlockWindow
+	}
 	return &ao, p.Err()
 }
