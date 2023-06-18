@@ -176,7 +176,7 @@ var marketOrderCmd = &cobra.Command{
 		}
 
 		// Generate transaction
-		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.MarketOrder{
+		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.AddOrder{
 			Pair: orderbook.Pair{
 				BaseTokenID: baseTokenID,
 				QuoteTokenID: quoteTokenID,

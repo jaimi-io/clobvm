@@ -35,7 +35,6 @@ import (
 
 const (
 	feePerTx     = 1000
-	defaultRange = 32
 )
 
 type txIssuer struct {
@@ -54,7 +53,7 @@ func (t *timeModifier) Base(b *chain.Base) {
 	b.Timestamp = t.Timestamp
 }
 
-var balance = uint64(1_000_000) * utils.MinQuantity()
+var balance = uint64(1_000_000_000 * utils.MinBalance())
 
 var spamCmd = &cobra.Command{
 	Use: "spam",
@@ -64,23 +63,15 @@ var spamCmd = &cobra.Command{
 }
 
 func getRandomRecipient(self int, keys []crypto.PrivateKey) (crypto.PublicKey, error) {
-	// if randomRecipient {
-	priv, err := crypto.GeneratePrivateKey()
-	if err != nil {
-		return crypto.EmptyPublicKey, err
-	}
-	return priv.PublicKey(), nil
-	// }
-
 	// Select item from array
-	// index := rand.Int() % len(keys)
-	// if index == self {
-	// 	index++
-	// 	if index == len(keys) {
-	// 		index = 0
-	// 	}
-	// }
-	// return keys[index].PublicKey(), nil
+	index := rand.Int() % len(keys)
+	if index == self {
+		index++
+		if index == len(keys) {
+			index = 0
+		}
+	}
+	return keys[index].PublicKey(), nil
 }
 
 type BalanceUpdate struct {

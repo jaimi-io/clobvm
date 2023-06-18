@@ -108,6 +108,9 @@ var generatePrometheusCmd = &cobra.Command{
 		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_actions_cancel_order[30s])/30", chainID))
 		utils.Outf("{{yellow}}cancel orders per second:{{/}} %s\n", panels[len(panels)-1])
 
+		panels = append(panels, fmt.Sprintf("increase(avalanche_%s_vm_clobvm_orders_cancel_num[30s])/30", chainID))
+		utils.Outf("{{yellow}}number cancel orders per second:{{/}} %s\n", panels[len(panels)-1])
+
 		panels = append(panels, fmt.Sprintf("avalanche_%s_vm_clobvm_orders_order_num", chainID))
 		utils.Outf("{{yellow}}number open orders:{{/}} %s\n", panels[len(panels)-1])
 
