@@ -36,7 +36,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
+func (ob *Orderbook) matchOrder(order *Order, blockTs int64, marketOrder bool, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -48,7 +48,7 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 	prevQuantity := order.Quantity
 	isFilled := true
 
-	for heap.Len() > 0 && matchPriceFn(heap.Peek().Priority(), order.Price) && 0 < order.Quantity {
+	for heap.Len() > 0 && (marketOrder || matchPriceFn(heap.Peek().Priority(), order.Price)) && 0 < order.Quantity {
 		queue := heap.Peek()
 		for queue.Len() > 0 && 0 < order.Quantity {
 			takerOrder := queue.Peek()

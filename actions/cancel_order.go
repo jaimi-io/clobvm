@@ -77,6 +77,6 @@ func UnmarshalCancelOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error
 	var co CancelOrder
 	p.UnpackID(true, &co.Pair.BaseTokenID)
 	p.UnpackID(true, &co.Pair.QuoteTokenID)
-	p.UnpackID(true, &co.OrderID)
+	p.UnpackID(false, &co.OrderID)
 	return &co, p.Err()
 }

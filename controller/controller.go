@@ -141,25 +141,24 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	for i, tx := range blk.Txs {
 		result := results[i]
 		if result.Success {
+			addr := tx.Auth.PublicKey()
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
 				c.metrics.AddOrder()
-				addr := tx.Auth.PublicKey()
 				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side, blk.Hght + action.BlockExpiryWindow)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, blk.Hght, blk.Tmstmp, false, pendingAmtPtr, c.metrics)
+				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr, c.metrics)
 			case *actions.CancelOrder:
 				c.metrics.CancelOrder()
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
-				order := orderbook.Get(action.OrderID)
-				if order != nil {
-					orderbook.Cancel(order, pendingAmtPtr, c.metrics)
+				if action.OrderID == ids.Empty {
+					orderbook.CancelAll(addr, pendingAmtPtr, c.metrics)
+				} else {
+					order := orderbook.Get(action.OrderID)
+					if order != nil {
+						orderbook.Cancel(order, pendingAmtPtr, c.metrics)
+					}
 				}
-			case *actions.MarketOrder:
-				addr := tx.Auth.PublicKey()
-				order := orderbook.NewOrder(tx.ID(), addr, 0, action.Quantity, action.Side, blk.Hght)
-				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, blk.Hght, blk.Tmstmp, true, pendingAmtPtr, c.metrics)
 			case *actions.Transfer:
 				c.metrics.Transfer()
 			}

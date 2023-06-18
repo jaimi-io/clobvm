@@ -18,8 +18,8 @@ import (
 type AddOrder struct {
 	Pair              orderbook.Pair `json:"pair"`
 	Quantity          uint64         `json:"quantity"`
-	Price             uint64         `json:"price"`
 	Side              bool           `json:"side"`
+	Price             uint64         `json:"price"`
 	BlockExpiryWindow uint64         `json:"blockExpiryWindow"`
 }
 
@@ -31,10 +31,15 @@ func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (ao *AddOrder) amount() (uint64, ids.ID) {
+func (ao *AddOrder) amount(obm *orderbook.OrderbookManager) (uint64, ids.ID) {
 	isFilled := false
 	getAmount := orderbook.GetAmountFn(ao.Side, isFilled, ao.Pair)
-	return getAmount(ao.Quantity, ao.Price)
+	price := ao.Price
+	if price == 0 {
+		price = obm.GetOrderbook(ao.Pair).GetMidPrice()
+	}
+	amt, tokenID := getAmount(ao.Quantity, price)
+	return amt, tokenID
 }
 
 func (ao *AddOrder) StateKeys(auth chain.Auth, txID ids.ID) [][]byte {
@@ -51,12 +56,16 @@ func (ao *AddOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amou
 		return 0
 	}
 	user := auth.PublicKey()
-	amt, _ := ao.amount()
+	amt, _ := ao.amount(obm)
 	return obm.GetOrderbook(ao.Pair).GetFee(user, timestamp, amt)
 }
 
 func (ao *AddOrder) Token(memoryState any) (tokenID ids.ID) {
-	_, tokenID = ao.amount()
+	obm := memoryState.(*orderbook.OrderbookManager)
+	if obm == nil {
+		return ao.Pair.QuoteTokenID
+	}
+	_, tokenID = ao.amount(obm)
 	return tokenID
 }
 
@@ -85,7 +94,7 @@ func (ao *AddOrder) Execute(
 	if quoteBalance, err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	amount, tokenID := ao.amount()
+	amount, tokenID := ao.amount(obm)
 	var decBalance uint64
 	if decBalance, err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
@@ -103,8 +112,8 @@ func (ao *AddOrder) Marshal(p *codec.Packer) {
 	p.PackID(ao.Pair.BaseTokenID)
 	p.PackID(ao.Pair.QuoteTokenID)
 	p.PackUint64(ao.Quantity)
-	p.PackUint64(ao.Price)
 	p.PackBool(ao.Side)
+	p.PackUint64(ao.Price)
 	p.PackUint64(ao.BlockExpiryWindow)
 }
 
@@ -113,8 +122,8 @@ func UnmarshalAddOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	p.UnpackID(true, &ao.Pair.BaseTokenID)
 	p.UnpackID(true, &ao.Pair.QuoteTokenID)
 	ao.Quantity = p.UnpackUint64(true)
-	ao.Price = p.UnpackUint64(true)
 	ao.Side = p.UnpackBool()
+	ao.Price = p.UnpackUint64(false)
 	ao.BlockExpiryWindow = p.UnpackUint64(false)
 	if ao.BlockExpiryWindow == 0 {
 		ao.BlockExpiryWindow = consts.EvictionBlockWindow
