@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -295,9 +296,11 @@ var _ = ginkgo.BeforeSuite(func() {
 	nodeInfos := status.GetClusterInfo().GetNodeInfos()
 
 	instancesA = []instance{}
+	var output string
 	for _, nodeName := range subnetA {
 		info := nodeInfos[nodeName]
 		u := fmt.Sprintf("%s/ext/bc/%s", info.Uri, blockchainIDA)
+		output += fmt.Sprintf("%s\n", u)
 		_, err := ids.FromString(blockchainIDA)
 		gomega.Expect(err).Should(gomega.BeNil())
 		nodeID, err := ids.NodeIDFromString(info.GetId())
@@ -308,6 +311,8 @@ var _ = ginkgo.BeforeSuite(func() {
 			cli:    rpc.NewJSONRPCClient(u),
 		})
 	}
+
+  _ = os.WriteFile("./.uri", []byte(output), 0644)
 
 	if mode != modeRunSingle {
 		instancesB = []instance{}
@@ -325,34 +330,6 @@ var _ = ginkgo.BeforeSuite(func() {
 			})
 		}
 	}
-
-	// Ensure nodes are healthy
-	//
-	// TODO: figure out why this is necessary after all nodes return healthy
-	// for i := 0; i < 10; i++ {
-	// 	for j := 0; j < len(instancesA); j++ {
-	// 		gen, err = instancesA[j].tcli.Genesis(context.Background())
-	// 		if err != nil {
-	// 			break
-	// 		}
-	// 	}
-	// 	if err != nil {
-	// 		time.Sleep(1 * time.Second)
-	// 		continue
-	// 	}
-	// 	for j := 0; j < len(instancesB); j++ {
-	// 		gen, err = instancesB[j].tcli.Genesis(context.Background())
-	// 		if err != nil {
-	// 			break
-	// 		}
-	// 	}
-	// 	if err != nil {
-	// 		time.Sleep(1 * time.Second)
-	// 		continue
-	// 	}
-	// 	break
-	// }
-	//gomega.Ω(err).Should(gomega.BeNil())
 
 	// Load default pk
 	priv, err = crypto.HexToKey(
