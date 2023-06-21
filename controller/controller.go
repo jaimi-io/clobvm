@@ -155,7 +155,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 					orderbook.CancelAll(addr, pendingAmtPtr, c.metrics)
 				} else {
 					order := orderbook.Get(action.OrderID)
-					if order != nil {
+					if order != nil || order.User == addr {
 						orderbook.Cancel(order, pendingAmtPtr, c.metrics)
 					}
 				}
