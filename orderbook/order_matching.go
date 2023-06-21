@@ -10,7 +10,7 @@ import (
 
 func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64, ids.ID) {
 	if side && !isFilled || !side && isFilled {
-		return func(q, p uint64) (uint64, ids.ID) { return uint64(float64(q) * utils.DisplayPrice(p)), pair.QuoteTokenID }
+		return func(q, p uint64) (uint64, ids.ID) { return p * q / utils.MinPrice(), pair.QuoteTokenID }
 	}
 	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
 }
