@@ -1,6 +1,8 @@
 package orderbook
 
 import (
+	"fmt"
+
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -9,6 +11,7 @@ import (
 type OrderbookManager struct{
 	orderbooks map[Pair]*Orderbook
 	pendingFunds map[crypto.PublicKey]map[ids.ID]*VersionedBalance
+	lastBlockHeight uint64
 }
 
 func NewOrderbookManager() *OrderbookManager {
@@ -49,6 +52,10 @@ func (obm *OrderbookManager) PullPendingFunds(user crypto.PublicKey, tokenID ids
 		return 0
 	}
 	blockHeight -= consts.PendingBlockWindow
+	if blockHeight > obm.lastBlockHeight {
+		s := fmt.Sprintf("blockHeight %d is greater than lastBlockHeight %d", blockHeight, obm.lastBlockHeight)
+		panic(s)
+	}
 	return obm.pendingFunds[user][tokenID].Pull(blockHeight)
 }
 
@@ -60,4 +67,8 @@ func (obm *OrderbookManager) GetPendingFunds(user crypto.PublicKey, tokenID ids.
 		return 0, blockHeight
 	}
 	return obm.pendingFunds[user][tokenID].Get(blockHeight)
+}
+
+func (obm *OrderbookManager) UpdateLastBlockHeight(blockHeight uint64) {
+	obm.lastBlockHeight = blockHeight
 }

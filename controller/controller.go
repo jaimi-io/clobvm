@@ -178,6 +178,8 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			c.orderbookManager.AddPendingFunds(user, tokenID, balance, blk.Hght)
 		}
 	}
+	c.orderbookManager.UpdateAllMidPrices(blk.Hght)
+	c.orderbookManager.UpdateLastBlockHeight(blk.Hght)
 	c.metrics.ObserverOrderProcessing(time.Since(start))
 	return nil
 }

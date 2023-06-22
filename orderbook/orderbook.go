@@ -24,6 +24,7 @@ type Orderbook struct {
 	evictionMap map[uint64]map[ids.ID]struct{}
 	openOrders map[crypto.PublicKey]map[ids.ID]struct{}
 	executionHistory map[crypto.PublicKey]*MonthlyExecuted
+	midPrice *VersionedBalance
 }
 
 func NewOrderbook(pair Pair) *Orderbook {
@@ -36,6 +37,7 @@ func NewOrderbook(pair Pair) *Orderbook {
 		evictionMap: make(map[uint64]map[ids.ID]struct{}),
 		executionHistory: make(map[crypto.PublicKey]*MonthlyExecuted),
 		openOrders: make(map[crypto.PublicKey]map[ids.ID]struct{}),
+		midPrice: NewVersionedBalance(0, 0),
 	}
 }
 
@@ -138,6 +140,25 @@ func (ob *Orderbook) GetMidPrice() uint64 {
 	maxQueue := ob.maxHeap.Peek()
 	minQueue := ob.minHeap.Peek()
 	return (maxQueue.Priority() + minQueue.Priority()) / 2
+}
+
+func (obm *OrderbookManager) UpdateAllMidPrices(blockNumber uint64) {
+	for pair := range obm.orderbooks {
+		ob := obm.orderbooks[pair]
+		ob.AddMidPriceBlk(blockNumber)
+	}
+}
+
+func (ob *Orderbook) GetMidPriceBlk(blockHeight uint64) uint64 {
+	if blockHeight < consts.PendingBlockWindow {
+		return 0
+	}
+	mid, _ := ob.midPrice.Get(blockHeight - consts.PendingBlockWindow)
+	return mid
+}
+
+func (ob *Orderbook) AddMidPriceBlk(blockHeight uint64) {
+	ob.midPrice.Put(ob.GetMidPrice(), blockHeight)
 }
 
 func (ob *Orderbook) GetSellSide() [][]*Order {
