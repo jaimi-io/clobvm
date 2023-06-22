@@ -24,7 +24,7 @@ type AddOrder struct {
 }
 
 func (ao *AddOrder) MaxUnits(r chain.Rules) uint64 {
-	return ao.Quantity / utils.MinQuantity()
+	return 1
 }
 
 func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
@@ -94,6 +94,10 @@ func (ao *AddOrder) Execute(
 	if quoteBalance, err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
+	if ao.Price == 0 && obm.GetOrderbook(ao.Pair).GetMidPriceBlk(blockHeight) == 0 {
+		err = errors.New("mid-price cannot be zero")
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
+	}
 	amount, tokenID := ao.amount(obm, blockHeight)
 	var decBalance uint64
 	if decBalance, err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
@@ -105,7 +109,7 @@ func (ao *AddOrder) Execute(
 		quoteBalance = decBalance
 	}
 	output := utils.PackUpdatedBalance(user, baseBalance, user, quoteBalance)
-	return &chain.Result{Success: true, Units: ao.Quantity / utils.MinQuantity(), Output: output}, nil
+	return &chain.Result{Success: true, Units: 0, Output: output}, nil
 }
 
 func (ao *AddOrder) Marshal(p *codec.Packer) {
