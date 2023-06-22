@@ -62,39 +62,37 @@ func GetBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tok
 	return key, bal, err
 }
 
-func IncBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) error {
+func IncBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) (uint64, error) {
 	key, bal, err := GetBalance(ctx, db, pk, tokenID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	newBal, err := math.Add64(bal, amount)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	err = db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, newBal))
-	return err
+	return newBal, err
 }
 
-func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) error {
+func DecBalance(ctx context.Context, db chain.Database, pk crypto.PublicKey, tokenID ids.ID, amount uint64) (uint64, error) {
 	key, bal, err := GetBalance(ctx, db, pk, tokenID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	newBal, err := math.Sub(bal, amount)
 	if err != nil {
-		return fmt.Errorf("invalid subtract balance (token=%s, bal=%d, addr=%v, amount=%d)", tokenID, bal, crypto.Address("clob", pk), amount)
+		return 0, fmt.Errorf("invalid subtract balance (token=%s, bal=%d, addr=%v, amount=%d)", tokenID, bal, crypto.Address("clob", pk), amount)
 	}
 	err = db.Insert(ctx, key, binary.BigEndian.AppendUint64(nil, newBal))
-	return err
+	return newBal, err
 }
 
-func PullPendingBalance(ctx context.Context, db chain.Database, obm *orderbook.OrderbookManager, pk crypto.PublicKey, tokenID ids.ID, blockHeight uint64) error {
+func PullPendingBalance(ctx context.Context, db chain.Database, obm *orderbook.OrderbookManager, pk crypto.PublicKey, tokenID ids.ID, blockHeight uint64) (uint64, error) {
 	amount := obm.PullPendingFunds(pk, tokenID, blockHeight)
 	if amount > 0 {
-		err := IncBalance(ctx, db, pk, tokenID, amount)
-		if err != nil {
-			return err
-		}
+		bal, err := IncBalance(ctx, db, pk, tokenID, amount)
+		return bal, err
 	}
-	return nil
+	return 0, nil
 }

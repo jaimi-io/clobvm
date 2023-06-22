@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	ametrics "github.com/ava-labs/avalanchego/api/metrics"
@@ -15,6 +14,7 @@ import (
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/genesis"
+	"github.com/jaimi-io/clobvm/metrics"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/registry"
 	"github.com/jaimi-io/clobvm/rpc"
@@ -35,7 +35,7 @@ type Controller struct {
 	inner *vm.VM
 	orderbookManager *orderbook.OrderbookManager
 
-	metrics *Metrics
+	metrics *metrics.Metrics
 
 	snowCtx *snow.Context
 	stateManager *StateManager
@@ -73,7 +73,7 @@ func (c *Controller) Initialize(
 	c.stateManager = &StateManager{}
 	c.config = &config.Config{}
 	var err error
-	c.metrics, err = NewMetrics(gatherer)
+	c.metrics, err = metrics.NewMetrics(gatherer)
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
@@ -136,32 +136,33 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 	var pendingAmounts []orderbook.PendingAmt
 	pendingAmtPtr := &pendingAmounts
 
-	c.orderbookManager.EvictAllPairs(blk.Hght, pendingAmtPtr)
+	c.orderbookManager.EvictAllPairs(blk.Hght, pendingAmtPtr, c.metrics)
 
 	for i, tx := range blk.Txs {
 		result := results[i]
 		if result.Success {
+			addr := tx.Auth.PublicKey()
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
-				c.metrics.addOrder.Inc()
-				fmt.Println("AddOrder: ", tx.ID())
-				addr := tx.Auth.PublicKey()
-				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side)
+				c.metrics.AddOrder()
+				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side, blk.Hght + action.BlockExpiryWindow)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
-				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr)
+				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr, c.metrics)
 			case *actions.CancelOrder:
-				c.metrics.cancelOrder.Inc()
-				fmt.Println("CancelOrder: ", tx.ID())
+				c.metrics.CancelOrder()
 				orderbook := c.orderbookManager.GetOrderbook(action.Pair)
-				order := orderbook.Get(action.OrderID)
-				if order != nil {
-					orderbook.Cancel(order, pendingAmtPtr)
+				if action.OrderID == ids.Empty {
+					orderbook.CancelAll(addr, pendingAmtPtr, c.metrics)
+				} else {
+					order := orderbook.Get(action.OrderID)
+					if order != nil || order.User == addr {
+						orderbook.Cancel(order, pendingAmtPtr, c.metrics)
+					}
 				}
 			case *actions.Transfer:
-				c.metrics.transfer.Inc()
+				c.metrics.Transfer()
 			}
 		}
-		fmt.Println("Res: ", result, " Tx: ", tx.ID())
 	}
 
 	fundsPerUser := make(map[crypto.PublicKey]map[ids.ID]uint64)
@@ -177,7 +178,9 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			c.orderbookManager.AddPendingFunds(user, tokenID, balance, blk.Hght)
 		}
 	}
-	c.metrics.orderProcessing.Observe(float64(time.Since(start)))
+	c.orderbookManager.UpdateAllMidPrices(blk.Hght)
+	c.orderbookManager.UpdateLastBlockHeight(blk.Hght)
+	c.metrics.ObserverOrderProcessing(time.Since(start))
 	return nil
 }
 

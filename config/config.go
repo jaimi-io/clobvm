@@ -1,6 +1,7 @@
 package config
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/ava-labs/avalanchego/utils/profiler"
@@ -14,15 +15,19 @@ func (c *Config) GetTraceConfig() *trace.Config {
 }
 
 func (c *Config) GetParallelism() int {
-	return 5
+	numCPUs := runtime.NumCPU()
+	if numCPUs > 4 {
+		return numCPUs - 4
+	}
+	return 1
 }
 
 func (c *Config) GetMempoolSize() int {
-	return 10000000
+	return 2_048
 }
 
 func (c *Config) GetMempoolPayerSize() int {
-	return 10000000
+	return 32
 }
 
 func (c *Config) GetMempoolExemptPayers() [][]byte {
@@ -34,27 +39,27 @@ func (c *Config) GetMempoolVerifyBalances() bool {
 }
 
 func (c *Config) GetStreamingBacklogSize() int {
-	return 10000000
+	return 1024
 }
 
 func (c *Config) GetStateHistoryLength() int {
-	return 0
+	return 256
 }
 
 func (c *Config) GetStateCacheSize() int {
-	return 0
+	return 65_536
 }
 
 func (c *Config) GetAcceptorSize() int {
-	return 0
+	return 1024
 }
 
 func (c *Config) GetStateSyncParallelism() int {
-	return 0
+	return 4
 }
 
 func (c *Config) GetStateSyncMinBlocks() uint64 {
-	return 0
+	return 256
 }
 
 func (c *Config) GetStateSyncServerDelay() time.Duration {
@@ -62,9 +67,9 @@ func (c *Config) GetStateSyncServerDelay() time.Duration {
 }
 
 func (c *Config) GetBlockLRUSize() int {
-	return 0
+	return 128
 }
 
 func (c *Config) GetContinuousProfilerConfig() *profiler.Config {
-	return nil
+	return &profiler.Config{Enabled: false}
 }

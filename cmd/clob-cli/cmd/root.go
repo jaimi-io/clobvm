@@ -24,6 +24,7 @@ func init() {
 		spamCmd,
 		pendingFundsCmd,
 		volumesCmd,
+		midPriceCmd,
 	)
 
 	rootCmd.PersistentPreRunE = func(*cobra.Command, []string) error {
@@ -44,6 +45,7 @@ func init() {
 		transferCmd,
 		addOrderCmd,
 		cancelOrderCmd,
+		marketOrderCmd,
 	)
 
 	prometheusCmd.AddCommand(
@@ -53,6 +55,7 @@ func init() {
 	spamCmd.AddCommand(
 		transferSpamCmd,
 		orderSpamCmd,
+		simulateOrderCmd,
 	)
 }
 

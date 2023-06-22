@@ -18,6 +18,7 @@ var balanceCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+
 		addr, err := promptAddress("address")
 		if err != nil {
 			return err
@@ -36,6 +37,27 @@ var balanceCmd = &cobra.Command{
 	},
 }
 
+var midPriceCmd = &cobra.Command{
+	Use: "mid-price",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, _, _, cli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+
+		baseTokenID, quoteTokenID := getTokens()
+		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
+		
+		midPrice, err := cli.MidPrice(ctx, pair)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("mid price: %f\n", midPrice)
+		return nil
+	},
+}
+
 var allOrdersCmd = &cobra.Command{
 	Use: "orders",
 	RunE: func(*cobra.Command, []string) error {
@@ -45,7 +67,16 @@ var allOrdersCmd = &cobra.Command{
 			return err
 		}
 
-		baseTokenID, quoteTokenID := getTokens()
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
+
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 		
 		buySide, sellSide, err := cli.AllOrders(ctx, pair)
@@ -62,11 +93,15 @@ var pendingFundsCmd = &cobra.Command{
 	Use: "pending",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, key, _, _, cli, err := defaultActor()
+		_, _, _, _, cli, err := defaultActor()
 		if err != nil {
 			return err
 		}
-		addr := key.PublicKey()
+
+		addr, err := promptAddress("address")
+		if err != nil {
+			return err
+		}
 
 		tokenID, err := promptToken("")
 		if err != nil {
@@ -96,7 +131,15 @@ var volumesCmd = &cobra.Command{
 			return err
 		}
 
-		baseTokenID, quoteTokenID := getTokens()
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 		
 		volumes, err := cli.Volumes(ctx, pair)

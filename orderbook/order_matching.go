@@ -3,13 +3,14 @@ package orderbook
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/heap"
+	"github.com/jaimi-io/clobvm/metrics"
 	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 func GetAmountFn(side bool, isFilled bool, pair Pair) func (q, p uint64) (uint64, ids.ID) {
 	if side && !isFilled || !side && isFilled {
-		return func(q, p uint64) (uint64, ids.ID) { return uint64(float64(q) * utils.DisplayPrice(p)), pair.QuoteTokenID }
+		return func(q, p uint64) (uint64, ids.ID) { return p * q / utils.MinPrice(), pair.QuoteTokenID }
 	}
 	return func(q, p uint64) (uint64, ids.ID) { return q, pair.BaseTokenID }
 }
@@ -35,7 +36,7 @@ func getMatchPriceFn(side bool) func(a, b uint64) bool {
 	return matchPriceFn
 }
 
-func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) matchOrder(order *Order, blockTs int64, marketOrder bool, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
 	var heap *heap.PriorityQueueHeap[*Order, uint64]
 	if order.Side {
 		heap = ob.minHeap
@@ -43,10 +44,11 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 		heap = ob.maxHeap
 	}
 	matchPriceFn := getMatchPriceFn(order.Side)
+	var filled uint64
 	prevQuantity := order.Quantity
 	isFilled := true
 
-	for heap.Len() > 0 && matchPriceFn(heap.Peek().Priority(), order.Price) && 0 < order.Quantity {
+	for heap.Len() > 0 && (marketOrder || matchPriceFn(heap.Peek().Priority(), order.Price)) && 0 < order.Quantity {
 		queue := heap.Peek()
 		for queue.Len() > 0 && 0 < order.Quantity {
 			takerOrder := queue.Peek()
@@ -55,11 +57,14 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 			order.Quantity -= toFill
 			ob.volumeMap[takerOrder.Price] -= toFill
 			if takerOrder.Quantity == 0 {
-				ob.Remove(queue.Pop())
+				ob.Remove(queue.Pop(), metrics)
 			}
-			// TODO: avg price for the order that gets added
 			ob.toPendingAmount(takerOrder, toFill, isFilled, pendingAmounts)
 			ob.addExec(takerOrder.User, blockTs, toFill)
+			filled += takerOrder.Price * toFill
+			metrics.OrderAmountSub(toFill)
+			metrics.OrderFillsNum()
+			metrics.OrderFillsAmount(toFill)
 		}
 
 		if queue.Len() == 0 {
@@ -68,8 +73,13 @@ func (ob *Orderbook) matchOrder(order *Order, blockTs int64, pendingAmounts *[]P
 	}
 	if prevQuantity > order.Quantity {
 		filledQuantity := prevQuantity - order.Quantity
+		oldOrderPrice := order.Price
+		order.Price = filled / filledQuantity
 		ob.toPendingAmount(order, filledQuantity, isFilled, pendingAmounts)
+		order.Price = oldOrderPrice
 		ob.addExec(order.User, blockTs, filledQuantity)
+		metrics.OrderFillsNum()
+		metrics.OrderFillsAmount(filledQuantity)
 	} 
 }
 

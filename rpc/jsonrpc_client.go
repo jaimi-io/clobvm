@@ -38,6 +38,15 @@ func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids
 	return reply.Balance, err
 }
 
+func (j *JSONRPCClient) MidPrice(ctx context.Context, pair orderbook.Pair) (float64, error) {
+	args := &MidPriceArgs{
+		Pair: pair,
+	}
+	var reply MidPriceReply
+	err := j.requester.SendRequest(ctx, "midPrice", args, &reply)
+	return reply.MidPrice, err
+}
+
 func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (string, string, error) {
 	args := &AllOrdersArgs{
 		Pair: pair,

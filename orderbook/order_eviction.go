@@ -3,6 +3,7 @@ package orderbook
 import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/jaimi-io/clobvm/consts"
+	"github.com/jaimi-io/clobvm/metrics"
 )
 
 func (ob *Orderbook) AddToEviction(orderID ids.ID, blockHeight uint64) {
@@ -13,7 +14,7 @@ func (ob *Orderbook) AddToEviction(orderID ids.ID, blockHeight uint64) {
 	ob.evictionMap[blockExpiry][orderID] = struct{}{}
 }
 
-func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt) {
+func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
 	ordersToEvict := ob.evictionMap[blockNumber]
 	if ordersToEvict == nil {
 		return
@@ -25,14 +26,14 @@ func (ob *Orderbook) Evict(blockNumber uint64, pendingAmounts *[]PendingAmt) {
 			continue
 		}
 		i++;
-		ob.Cancel(order, pendingAmounts)
+		ob.Cancel(order, pendingAmounts, metrics)
 	}
 	delete(ob.evictionMap, blockNumber)
 }
 
-func (obm *OrderbookManager) EvictAllPairs(blockNumber uint64, pendingAmounts *[]PendingAmt) {
+func (obm *OrderbookManager) EvictAllPairs(blockNumber uint64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
 	for pair := range obm.orderbooks {
 		ob := obm.orderbooks[pair]
-		ob.Evict(blockNumber, pendingAmounts)
+		ob.Evict(blockNumber, pendingAmounts, metrics)
 	}
 }

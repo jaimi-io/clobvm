@@ -4,6 +4,8 @@ import (
 	"math"
 
 	"github.com/jaimi-io/clobvm/consts"
+	"github.com/jaimi-io/hypersdk/codec"
+	"github.com/jaimi-io/hypersdk/crypto"
 )
 
 func MinBalance() uint64 {
@@ -12,6 +14,10 @@ func MinBalance() uint64 {
 
 func MinQuantity() uint64 {
 	return uint64(math.Pow10(consts.BalanceDecimals - consts.QuantityDecimals))
+}
+
+func MinPrice() uint64 {
+	return uint64(math.Pow10(consts.PriceDecimals))
 }
 
 func QuantityToBalance(quantity uint64) uint64 {
@@ -36,4 +42,13 @@ func DisplayQuantity(quantity uint64) float64 {
 
 func DisplayBalance(balance uint64) float64 {
 	return toDecimal(balance, consts.BalanceDecimals)
+}
+
+func PackUpdatedBalance(baseUser crypto.PublicKey, baseBal uint64, quoteUser crypto.PublicKey, quoteBal uint64) []byte {
+	p := codec.NewWriter(math.MaxInt)
+	p.PackPublicKey(baseUser)
+	p.PackUint64(baseBal)
+	p.PackPublicKey(quoteUser)
+	p.PackUint64(quoteBal)
+	return p.Bytes()
 }

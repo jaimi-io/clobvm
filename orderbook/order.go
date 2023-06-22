@@ -10,25 +10,27 @@ import (
 )
 
 type Order struct {
-	ID        ids.ID
-	User      crypto.PublicKey
-	Price     uint64
-	Quantity  uint64
-	Fee       float64
-	Side      bool
+	ID          ids.ID
+	User        crypto.PublicKey
+	Price       uint64
+	Quantity    uint64
+	Fee         float64
+	Side        bool
+	BlockExpiry uint64
 }
 
 func (o *Order) GetID() ids.ID {
 	return o.ID
 }
 
-func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, side bool) *Order {
+func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, side bool, blockExpiry uint64) *Order {
 	return &Order{
 		ID: id,
 		User: user,
 		Price: price,
 		Quantity: utils.BalanceToQuantity(quantity),
 		Side: side,
+		BlockExpiry: blockExpiry,
 	}
 }
 

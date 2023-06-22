@@ -7,15 +7,15 @@ import (
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
+	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/codec"
-	"github.com/jaimi-io/hypersdk/utils"
+	hutils "github.com/jaimi-io/hypersdk/utils"
 )
 
 type CancelOrder struct {
 	Pair    orderbook.Pair `json:"pair"`
 	OrderID ids.ID  	     `json:"orderID"`
-	Side    bool 			     `json:"side"`
 }
 
 func (co *CancelOrder) MaxUnits(r chain.Rules) uint64 {
@@ -34,12 +34,12 @@ func (co *CancelOrder) StateKeys(auth chain.Auth, _ ids.ID) [][]byte {
 	}
 }
 
-func (co *CancelOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+func (co *CancelOrder) Fee(timestamp int64, blockHeight uint64, auth chain.Auth, memoryState any) (amount uint64) {
 	return 1
 }
 
-func (co *CancelOrder) Token() (tokenID ids.ID) {
-	return co.Pair.TokenID(co.Side)
+func (co *CancelOrder) Token(memoryState any) (tokenID ids.ID) {
+	return co.Pair.QuoteTokenID
 }
 
 func (co *CancelOrder) Execute(
@@ -55,27 +55,28 @@ func (co *CancelOrder) Execute(
 ) (result *chain.Result, err error) {
 	obm := memoryState.(*orderbook.OrderbookManager)
 	user := auth.PublicKey()
-	if err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.BaseTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+	var baseBalance uint64
+	var quoteBalance uint64
+	if baseBalance, err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.BaseTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	if err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.QuoteTokenID, blockHeight); err != nil {
-		return &chain.Result{Success: false, Units: 0, Output: utils.ErrBytes(err)}, nil
+	if quoteBalance, err = storage.PullPendingBalance(ctx, db, obm, user, co.Pair.QuoteTokenID, blockHeight); err != nil {
+		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	return &chain.Result{Success: true, Units: 0}, nil
+	output := utils.PackUpdatedBalance(user, baseBalance, user, quoteBalance)
+	return &chain.Result{Success: true, Units: 0, Output: output}, nil
 }
 
 func (co *CancelOrder) Marshal(p *codec.Packer) {
 	p.PackID(co.Pair.BaseTokenID)
 	p.PackID(co.Pair.QuoteTokenID)
 	p.PackID(co.OrderID)
-	p.PackBool(co.Side)
 }
 
 func UnmarshalCancelOrder(p *codec.Packer, _ *warp.Message) (chain.Action, error) {
 	var co CancelOrder
 	p.UnpackID(true, &co.Pair.BaseTokenID)
 	p.UnpackID(true, &co.Pair.QuoteTokenID)
-	p.UnpackID(true, &co.OrderID)
-	co.Side = p.UnpackBool()
+	p.UnpackID(false, &co.OrderID)
 	return &co, p.Err()
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/trace"
 
+	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -46,13 +47,13 @@ func New() *Genesis {
 		MaxBlockUnits: math.MaxUint64, // 18 billion worth of order quantity (to review)
 
 		// Tx params
-		BaseUnits:      48, // timestamp(8) + chainID(32) + unitPrice(8)
-		ValidityWindow: 100_000,
+		BaseUnits:      0,
+		ValidityWindow: 60,
 
 		// Unit pricing
 		MinUnitPrice:               1,
 		UnitPriceChangeDenominator: 48,
-		WindowTargetUnits:          1_000_000_000,
+		WindowTargetUnits:          20_000_000_000,
 
 		// Block pricing
 		MinBlockCost:               0,
@@ -92,8 +93,10 @@ func distributeTokens(ctx context.Context, db chain.Database) error {
 		if err != nil {
 			return err
 		}
+		decimals := uint64(math.Pow10(consts.BalanceDecimals))
+		amt := uint64(10_000_000_000) * decimals
 		for _, tokenID := range tokens {
-			err = storage.SetBalance(ctx, db, addr, tokenID, math.MaxUint64)
+			err = storage.SetBalance(ctx, db, addr, tokenID, amt)
 			if err != nil {
 				return err
 			}
