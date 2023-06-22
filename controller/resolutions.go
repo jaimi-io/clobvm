@@ -5,10 +5,15 @@ import (
 	"fmt"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/storage"
 	"github.com/jaimi-io/hypersdk/crypto"
 )
+
+func (c *Controller) Genesis() (*genesis.Genesis) {
+	return c.genesis
+}
 
 func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenID ids.ID) (uint64, error) {
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, pk, tokenID)

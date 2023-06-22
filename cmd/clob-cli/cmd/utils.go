@@ -14,7 +14,6 @@ import (
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
-	"github.com/jaimi-io/clobvm/genesis"
 	crpc "github.com/jaimi-io/clobvm/rpc"
 	trpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/hypersdk/chain"
@@ -92,7 +91,6 @@ func defaultActor() (ids.ID, crypto.PrivateKey, *auth.EIP712Factory, *rpc.JSONRP
 		), crpc.NewRPCClient(
 			consts.URI,
 			consts.ChainID,
-			genesis.New(),
 		), nil
 }
 

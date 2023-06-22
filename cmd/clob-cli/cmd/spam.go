@@ -19,7 +19,6 @@ import (
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
-	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	trpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/utils"
@@ -108,7 +107,7 @@ var transferSpamCmd = &cobra.Command{
 
 		uris := consts.URIS
 		cli := rpc.NewJSONRPCClient(uris[0])
-		tcli := trpc.NewRPCClient(uris[0], chainID, genesis.New())
+		tcli := trpc.NewRPCClient(uris[0], chainID)
 		factory := auth.NewEIP712Factory(key)
 		avaxID, _ := getTokens()
 
@@ -198,7 +197,7 @@ var transferSpamCmd = &cobra.Command{
 		clients := make([]*txIssuer, len(uris))
 		for i := 0; i < len(uris); i++ {
 			cli := rpc.NewJSONRPCClient(uris[i])
-			tcli := trpc.NewRPCClient(uris[i], chainID, genesis.New())
+			tcli := trpc.NewRPCClient(uris[i], chainID)
 			dcli, err := rpc.NewWebSocketClient(uris[i], 128_000, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
@@ -453,7 +452,7 @@ var orderSpamCmd = &cobra.Command{
 
 		uris := consts.URIS
 		cli := rpc.NewJSONRPCClient(uris[0])
-		tcli := trpc.NewRPCClient(uris[0], chainID, genesis.New())
+		tcli := trpc.NewRPCClient(uris[0], chainID)
 	
 		factory := auth.NewEIP712Factory(key)
 		avaxID, usdcID := getTokens()
@@ -505,7 +504,7 @@ var orderSpamCmd = &cobra.Command{
 		clients := make([]*txIssuer, len(uris))
 		for i := 0; i < len(uris); i++ {
 			cli := rpc.NewJSONRPCClient(uris[i])
-			tcli := trpc.NewRPCClient(uris[i], chainID, genesis.New())
+			tcli := trpc.NewRPCClient(uris[i], chainID)
 			dcli, err := rpc.NewWebSocketClient(uris[i], 128_000, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err

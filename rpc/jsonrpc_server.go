@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/clobvm/utils"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -17,6 +18,15 @@ const JSONRPCEndpoint = "/clobapi"
 
 func NewRPCServer(c Controller) *JSONRPCServer {
 	return &JSONRPCServer{c}
+}
+
+type GenesisReply struct {
+	Genesis *genesis.Genesis `json:"genesis"`
+}
+
+func (j *JSONRPCServer) Genesis(_ *http.Request, _ *struct{}, reply *GenesisReply) (err error) {
+	reply.Genesis = j.c.Genesis()
+	return nil
 }
 
 type BalanceArgs struct {
