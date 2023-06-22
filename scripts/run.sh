@@ -12,7 +12,7 @@ if ! [[ "$0" =~ scripts/run.sh ]]; then
 fi
 
 VERSION=1.10.1
-MODE=${MODE:-run}
+MODE=${MODE:-run-single}
 LOGLEVEL=${LOGLEVEL:-info}
 AVALANCHE_LOG_LEVEL=${AVALANCHE_LOG_LEVEL:-INFO}
 STATESYNC_DELAY=${STATESYNC_DELAY:-0}
