@@ -303,9 +303,6 @@ var transferSpamCmd = &cobra.Command{
 
 				issuer := getRandomIssuer(clients)
 				factory := auth.NewEIP712Factory(accounts[i])
-				fundsL.Lock()
-				balance := funds[accounts[i].PublicKey()]
-				fundsL.Unlock()
 				for {
 					select {
 					case <-t.C:
@@ -713,9 +710,6 @@ var orderSpamCmd = &cobra.Command{
 
 				issuer := getRandomIssuer(clients)
 				factory := auth.NewEIP712Factory(accounts[i])
-				fundsL.Lock()
-				balance := funds[accounts[i].PublicKey()]
-				fundsL.Unlock()
 				ut := time.Now().Unix()
 				for {
 					select {
@@ -765,11 +759,6 @@ var orderSpamCmd = &cobra.Command{
 							if err := issuer.d.RegisterTx(tx); err != nil {
 								hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
 								continue
-							}
-							if side {
-								balance[usdcID] -= (fees + v * price)
-							} else {
-								balance[avaxID] -= (fees + v)
 							}
 							issuer.l.Lock()
 							issuer.outstandingTxs++

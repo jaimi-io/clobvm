@@ -263,6 +263,36 @@ func promptInt(
 	return strconv.Atoi(rawAmount)
 }
 
+func promptOptional(
+	label string,
+) (int, error) {
+	promptText := promptui.Prompt{
+		Label: label,
+		Validate: func(input string) error {
+			if len(input) == 0 {
+				return nil
+			}
+			amount, err := strconv.Atoi(input)
+			if err != nil {
+				return err
+			}
+			if amount <= 0 {
+				return fmt.Errorf("%d must be > 0", amount)
+			}
+			return nil
+		},
+	}
+	rawAmount, err := promptText.Run()
+	if err != nil {
+		return 0, err
+	}
+	rawAmount = strings.TrimSpace(rawAmount)
+	if len(rawAmount) == 0 {
+		return 0, nil
+	}
+	return strconv.Atoi(rawAmount)
+}
+
 func getTokens() (ids.ID, ids.ID) {
 	avaxID, _ := ids.FromString("VmwmdfVNQLiP1zJWmhaHipksKBAHmDZH5rZvdfCQfQ9peNx8a")
 	usdcID, _ := ids.FromString("eaX7nEYVKiiFLEvRYQWmHixL9nwC1jFxsa1R75ipEchWBMKiG")

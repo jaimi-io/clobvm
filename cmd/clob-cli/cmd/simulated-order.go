@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -23,6 +22,7 @@ import (
 	"github.com/jaimi-io/clobvm/orderbook"
 	trpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/utils"
+	"github.com/jaimi-io/hypersdk/chain"
 	"github.com/jaimi-io/hypersdk/crypto"
 	"github.com/jaimi-io/hypersdk/pubsub"
 	"github.com/jaimi-io/hypersdk/rpc"
@@ -37,31 +37,46 @@ type marketMaker struct {
 	midPrice       uint64
 	orders         []ids.ID
 	ordersLock     sync.Mutex
+	orderCounter   uint64
 }
 
-func (m *marketMaker) UpdateParams(newMidPrice uint64, len int) bool {
+var (
+	pair orderbook.Pair
+	inflight atomic.Int64
+	marketOrder atomic.Int64
+	expired atomic.Int64
+	sent atomic.Int64
+	exiting sync.Once
+	numTransactions int
+	marketMakerQuantity uint64
+	curSpreads map[float64]struct{}
+)
+
+func (m *marketMaker) UpdateParams(newMidPrice uint64) bool {
 	if newMidPrice == m.midPrice {
 		return false
 	}
 	m.midPrice = newMidPrice
-	m.buyPrices, m.sellPrices = calculateSpread(newMidPrice, len)
+	m.buyPrices, m.sellPrices = calculateSpread(newMidPrice)
 	return true
 }
 
-func calculateSpread(midPrice uint64, len int) ([]uint64, []uint64) {
+func calculateSpread(midPrice uint64) ([]uint64, []uint64) {
 	desiredStdDev := 0.25
 	desiredMean := 0.5
 	buyPrices := make([]uint64, 0)
 	sellPrices := make([]uint64, 0)
-	for i := 0; i < len; i++ {
+
+	for i := 0; i < numTransactions; i++ {
 		random := rand.New(rand.NewSource(time.Now().UnixNano()))
 		spread := random.NormFloat64()*desiredStdDev + desiredMean
-		for spread < 0.1 {
+		for _, ok := curSpreads[spread]; spread < 0.1 && !ok ; _, ok = curSpreads[spread]{
 			spread = random.NormFloat64()*desiredStdDev + desiredMean
 		}
 		dist := uint64(math.Round(float64(midPrice)*spread/100))
-		buyPrices = append(buyPrices, midPrice+dist)
-		sellPrices = append(sellPrices, midPrice-dist)
+		buyPrices = append(buyPrices, midPrice-dist)
+		sellPrices = append(sellPrices, midPrice+dist)
+		curSpreads[spread] = struct{}{}
 	}
 	return buyPrices, sellPrices
 }
@@ -74,10 +89,103 @@ func calculateMarketOrder(midPrice uint64) (uint64, bool) {
 	for quantity < 1 {
 		quantity = random.NormFloat64()*desiredStdDev + desiredMean
 	}
-	
-	qty := uint64(math.Round(quantity * float64(utils.MinPrice()))) * utils.MinQuantity()
+	qty := uint64(quantity * float64(utils.MinPrice())) * utils.MinQuantity()
 	side := random.Intn(2) == 0
 	return qty, side
+}
+
+func getMarketOrderSleep() (int64) {
+	desiredStdDev := float64(5)
+	desiredMean := float64(5)
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	sleepSec := random.NormFloat64()*desiredStdDev + desiredMean
+	for sleepSec < 1 {
+		sleepSec = random.NormFloat64()*desiredStdDev + desiredMean
+	}
+	
+	sleepMilli := int64(math.Round(sleepSec * 1000))
+	return sleepMilli
+}
+
+func simulateMarketOrderer(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712Factory, tm *timeModifier, localMidPrice uint64) {
+	quantity, side := calculateMarketOrder(localMidPrice)
+	_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
+		Pair:     pair,
+		Quantity: quantity,
+		Side:     side,
+		// ensure txs are unique
+	}, factory, 0, tm)
+	if err != nil {
+		hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
+		return
+	}
+	if err := issuer.d.RegisterTx(tx); err != nil {
+		hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
+		return
+	}
+	issuer.l.Lock()
+	issuer.outstandingTxs++
+	issuer.l.Unlock()
+	inflight.Add(1)
+	sent.Add(1)
+	marketOrder.Add(1)
+}
+
+func cancelAllOrders(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712Factory, tm *timeModifier) {
+	_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.CancelOrder{
+		Pair:     pair,
+		OrderID: ids.GenerateTestID(),
+	}, factory, 0, tm)
+	if err != nil {
+		hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
+		return
+	}
+	if err := issuer.d.RegisterTx(tx); err != nil {
+		hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
+		return
+	}
+	issuer.l.Lock()
+	issuer.outstandingTxs++
+	issuer.l.Unlock()
+	inflight.Add(1)
+	sent.Add(1)
+}
+
+func simulateMarketMaker(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712Factory, tm *timeModifier, localMidPrice uint64, i int, mm *marketMaker) {
+	toUpdate := mm.UpdateParams(localMidPrice)
+	if toUpdate {
+		cancelAllOrders(issuer, parser, factory, tm)
+	}
+	for k := 0; k < 2 * numTransactions; k++ {
+		side := (k+i)%2 == 0
+		var price uint64
+		if side {
+			price = mm.buyPrices[k/2]
+		} else {
+			price = mm.sellPrices[k/2]
+		}
+		mm.orderCounter += 1
+		_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
+			Pair:     pair,
+			Quantity: marketMakerQuantity,
+			Price:    price,
+			Side:     side,
+			// ensure txs are unique
+		}, factory, 0, tm)
+		if err != nil {
+			hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
+			continue
+		}
+		if err := issuer.d.RegisterTx(tx); err != nil {
+			hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
+			continue
+		}
+		issuer.l.Lock()
+		issuer.outstandingTxs++
+		issuer.l.Unlock()
+		inflight.Add(1)
+		sent.Add(1)
+	}
 }
 
 var simulateOrderCmd = &cobra.Command{
@@ -96,26 +204,23 @@ var simulateOrderCmd = &cobra.Command{
 	
 		factory := auth.NewEIP712Factory(key)
 		avaxID, usdcID := getTokens()
-		pair := orderbook.Pair{
+		pair = orderbook.Pair{
 			BaseTokenID:  avaxID,
 			QuoteTokenID: usdcID,
 		}
-		marketMakerQuantity := 20 * utils.MinBalance()
+		marketMakerQuantity = 20 * utils.MinBalance()
 		midPrice := 100 * utils.MinPrice()
 
 		// Distribute funds
-		numAccounts, err := promptInt("number of market makers")
+		numMarketMakers, err := promptInt("number of market makers")
 		if err != nil {
 			return err
 		}
-		// timeInterval, err := promptInt("time interval (ms)")
-		// if err != nil {
-		// 	return err
-		// }
-		numTransactions, err := promptInt("number of transactions")
+		numTransactions, err = promptInt("number of symmetrical orders")
 		if err != nil {
 			return err
 		}
+		numAccounts := numMarketMakers + numTransactions
 		witholding := uint64(feePerTx * numAccounts)
 		distAmount := (balance - witholding) / uint64(numAccounts)
 		hutils.Outf(
@@ -230,8 +335,9 @@ var simulateOrderCmd = &cobra.Command{
 		hutils.Outf("{{yellow}}distributed usdc funds to %d accounts{{/}}\n", numAccounts)
 
 		marketMakers := make(map[crypto.PublicKey]*marketMaker)
-		for i := 0; i < numAccounts; i++ {
-			buyPrices, sellPrices := calculateSpread(midPrice, numTransactions)
+		curSpreads = make(map[float64]struct{})
+		for i := 0; i < numMarketMakers; i++ {
+			buyPrices, sellPrices := calculateSpread(midPrice)
 			marketMakers[accounts[i].PublicKey()] = &marketMaker{
 				buyPrices:  buyPrices,
 				sellPrices: sellPrices,
@@ -254,9 +360,7 @@ var simulateOrderCmd = &cobra.Command{
 		// confirm txs (track failure rate)
 		cctx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		var inflight atomic.Int64
-		var sent atomic.Int64
-		var exiting sync.Once
+
 		for i := 0; i < len(clients); i++ {
 			issuer := clients[i]
 			wg.Add(1)
@@ -264,11 +368,6 @@ var simulateOrderCmd = &cobra.Command{
 				for {
 					_, dErr, result, err := issuer.d.ListenTx(context.TODO())
 					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					if dErr != nil {
-						fmt.Println(err)
 						return
 					}
 					inflight.Add(-1)
@@ -291,16 +390,10 @@ var simulateOrderCmd = &cobra.Command{
 							if result.Units > 0 {
 								_, ok := marketMakers[balUp.BaseTokenUser]
 								if !ok {
-									fmt.Println("old mid price", midPrice)
 									mid, _ := tcli.MidPrice(ctx, pair)
 									if mid != 0 {
 										midPrice = uint64(math.Round(mid * float64(utils.MinPrice())))
 									}
-									fmt.Println("new mid price", midPrice)
-								} else {
-									// mm.ordersLock.Lock()
-									// mm.orders = append(mm.orders, txID)
-									// mm.ordersLock.Unlock()
 								}
 							}
 						} else {
@@ -344,11 +437,12 @@ var simulateOrderCmd = &cobra.Command{
 					l.Lock()
 					if totalTxs > 0 {
 						hutils.Outf(
-							"{{yellow}}txs seen:{{/}} %d {{yellow}}success rate:{{/}} %.2f%% {{yellow}}inflight:{{/}} %d {{yellow}}issued/s:{{/}} %d\n", //nolint:lll
+							"{{yellow}}txs seen:{{/}} %d {{yellow}}success rate:{{/}} %.2f%% {{yellow}}inflight:{{/}} %d {{yellow}}issued/s:{{/}} %d {{yellow}}marketOrders:{{/}} %d\n", //nolint:lll
 							totalTxs,
 							float64(confirmedTxs)/float64(totalTxs)*100,
 							inflight.Load(),
 							current-psent,
+							marketOrder.Load(),
 						)
 					}
 					l.Unlock()
@@ -391,130 +485,26 @@ var simulateOrderCmd = &cobra.Command{
 
 						// Send transaction
 						start := time.Now()
-						mm := marketMakers[accounts[i].PublicKey()]
 						tm := &timeModifier{nextTime + parser.Rules(nextTime).GetValidityWindow() - 3}
-						// mm.ordersLock.Lock()
-						toUpdate := mm.UpdateParams(midPrice, numTransactions)
-						if toUpdate {
-							_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.CancelOrder{
-								Pair:     pair,
-								OrderID: ids.Empty,
-								 // ensure txs are unique
-							}, factory, 0, tm)
-							if err != nil {
-								hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
-								continue
-							}
-							if err := issuer.d.RegisterTx(tx); err != nil {
-								hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
-								continue
-							}
-							issuer.l.Lock()
-							issuer.outstandingTxs++
-							issuer.l.Unlock()
-							inflight.Add(1)
-							sent.Add(1)
+						//midL.Lock()
+						localMidPrice := midPrice
+						//midL.Unlock()
+						sleepMs := int64(1000)
+
+						if i >= numMarketMakers {
+							simulateMarketOrderer(issuer, parser, factory, tm, localMidPrice)
+							sleepMs = getMarketOrderSleep()
+						} else {
+							mm := marketMakers[accounts[i].PublicKey()]
+							simulateMarketMaker(issuer, parser, factory, tm, localMidPrice, i, mm)
 						}
-						for k := 0; k < 2 * numTransactions; k++ {
-							side := (k+i)%2 == 0
-							var price uint64
-							if side {
-								price = mm.buyPrices[k/2]
-							} else {
-								price = mm.sellPrices[k/2]
-							}
-							_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
-								Pair:     pair,
-								Quantity: marketMakerQuantity,
-								Price:    price,
-								Side:     side,
-								 // ensure txs are unique
-							}, factory, 0, tm)
-							if err != nil {
-								hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
-								continue
-							}
-							if err := issuer.d.RegisterTx(tx); err != nil {
-								hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
-								continue
-							}
-							issuer.l.Lock()
-							issuer.outstandingTxs++
-							issuer.l.Unlock()
-							inflight.Add(1)
-							sent.Add(1)
-						}
+
 						// Determine how long to sleep
 						dur := time.Since(start)
-						sleep := amath.Max(int64(1000)-dur.Milliseconds(), 0)
-						t.Reset(time.Duration(sleep) * time.Millisecond)
-					case <-gctx.Done():
-						return gctx.Err()
-					case <-cctx.Done():
-						return nil
-					case <-signals:
-						exiting.Do(func() {
-							hutils.Outf("{{yellow}}exiting broadcast loop{{/}}\n")
-							cancel()
-						})
-						return nil
-					}
-				}
-			})
-		}
-		for ri := 0; ri < 1; ri++ {
-			g.Go(func() error {
-				t := time.NewTimer(0) // ensure no duplicates created
-				defer t.Stop()
-
-				issuer := getRandomIssuer(clients)
-				factory := auth.NewEIP712Factory(key)
-				ut := time.Now().Unix()
-				for {
-					select {
-					case <-t.C:
-						// Ensure we aren't too backlogged
-						maxTxBacklog := 72_000
-						if inflight.Load() > int64(maxTxBacklog) {
-							t.Reset(1 * time.Second)
-							continue
+						sleep := amath.Max(sleepMs-dur.Milliseconds(), 0)
+						if sleepMs-dur.Milliseconds() < 0 {
+							hutils.Outf("{{red}}tx took too long:{{/}} %dms\n", dur.Milliseconds())
 						}
-
-						nextTime := time.Now().Unix()
-						if nextTime <= ut {
-							nextTime = ut + 1
-						}
-						ut = nextTime
-
-						// Send transaction
-						start := time.Now()
-						tm := &timeModifier{nextTime + parser.Rules(nextTime).GetValidityWindow() - 3}
-						for k := 0; k < numTransactions / 5; k++ {
-							quantity, side := calculateMarketOrder(midPrice)
-							_, tx, fees, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
-								Pair:     pair,
-								Quantity: quantity,
-								Side:     side,
-									// ensure txs are unique
-							}, factory, 0, tm)
-							if err != nil {
-								hutils.Outf("{{orange}}failed to generate:{{/}} %v\n", err)
-								continue
-							}
-							transferFee = fees
-							if err := issuer.d.RegisterTx(tx); err != nil {
-								hutils.Outf("{{orange}}failed to register:{{/}} %v\n", err)
-								continue
-							}
-							issuer.l.Lock()
-							issuer.outstandingTxs++
-							issuer.l.Unlock()
-							inflight.Add(1)
-							sent.Add(1)
-						}
-						// Determine how long to sleep
-						dur := time.Since(start)
-						sleep := amath.Max(int64(1000)-dur.Milliseconds(), 0)
 						t.Reset(time.Duration(sleep) * time.Millisecond)
 					case <-gctx.Done():
 						return gctx.Err()

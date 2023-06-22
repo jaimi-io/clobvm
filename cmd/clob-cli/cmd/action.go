@@ -71,25 +71,29 @@ var transferCmd = &cobra.Command{
 }
 
 var addOrderCmd = &cobra.Command{
-	Use: "add-order",
+	Use: "add-limit-order",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
 		_, _, authFactory, cli, tcli, err := defaultActor()
 		if err != nil {
 			return err
 		}
-		// baseTokenID, err := promptToken("base")
-		// if err != nil {
-		// 	return err
-		// }
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
 
-		// quoteTokenID, err := promptToken("quote")
-		// if err != nil {
-		// 	return err
-		// }
-		baseTokenID, quoteTokenID := getTokens()
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
 		
 		quantity, err := promptAmount("quantity", consts.BalanceDecimals)
+		if err != nil {
+			return err
+		}
+
+		side, err := promptBool("side")
 		if err != nil {
 			return err
 		}
@@ -99,7 +103,7 @@ var addOrderCmd = &cobra.Command{
 			return err
 		}
 
-		side, err := promptBool("side")
+		blockExpiryWindow, err := promptOptional("blockExpiryWindow")
 		if err != nil {
 			return err
 		}
@@ -124,6 +128,7 @@ var addOrderCmd = &cobra.Command{
 			Quantity: quantity,
 			Price: price,
 			Side: side,
+			BlockExpiryWindow: uint64(blockExpiryWindow),
 		}, authFactory)
 		if err != nil {
 			return err
@@ -136,23 +141,22 @@ var addOrderCmd = &cobra.Command{
 }
 
 var marketOrderCmd = &cobra.Command{
-	Use: "market-order",
+	Use: "add-market-order",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
 		_, _, authFactory, cli, tcli, err := defaultActor()
 		if err != nil {
 			return err
 		}
-		// baseTokenID, err := promptToken("base")
-		// if err != nil {
-		// 	return err
-		// }
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
 
-		// quoteTokenID, err := promptToken("quote")
-		// if err != nil {
-		// 	return err
-		// }
-		baseTokenID, quoteTokenID := getTokens()
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
 		
 		quantity, err := promptAmount("quantity", consts.BalanceDecimals)
 		if err != nil {
@@ -202,16 +206,15 @@ var cancelOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		// baseTokenID, err := promptToken("base")
-		// if err != nil {
-		// 	return err
-		// }
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
 
-		// quoteTokenID, err := promptToken("quote")
-		// if err != nil {
-		// 	return err
-		// }
-		baseTokenID, quoteTokenID := getTokens()
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
 		
 		orderID, err := promptID("orderID")
 		if err != nil {

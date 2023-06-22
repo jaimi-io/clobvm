@@ -14,16 +14,15 @@ var balanceCmd = &cobra.Command{
 	Use: "balance",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, key, _, _, cli, err := defaultActor()
+		_, _, _, _, cli, err := defaultActor()
 		if err != nil {
 			return err
 		}
 
-		addr := key.PublicKey()
-		// addr, err := promptAddress("address")
-		// if err != nil {
-		// 	return err
-		// }
+		addr, err := promptAddress("address")
+		if err != nil {
+			return err
+		}
 		tokenID, err := promptToken("")
 		if err != nil {
 			return err
@@ -68,7 +67,16 @@ var allOrdersCmd = &cobra.Command{
 			return err
 		}
 
-		baseTokenID, quoteTokenID := getTokens()
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
+
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 		
 		buySide, sellSide, err := cli.AllOrders(ctx, pair)
@@ -85,11 +93,15 @@ var pendingFundsCmd = &cobra.Command{
 	Use: "pending",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, key, _, _, cli, err := defaultActor()
+		_, _, _, _, cli, err := defaultActor()
 		if err != nil {
 			return err
 		}
-		addr := key.PublicKey()
+
+		addr, err := promptAddress("address")
+		if err != nil {
+			return err
+		}
 
 		tokenID, err := promptToken("")
 		if err != nil {
@@ -119,7 +131,15 @@ var volumesCmd = &cobra.Command{
 			return err
 		}
 
-		baseTokenID, quoteTokenID := getTokens()
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 		
 		volumes, err := cli.Volumes(ctx, pair)
