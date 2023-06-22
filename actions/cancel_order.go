@@ -34,7 +34,7 @@ func (co *CancelOrder) StateKeys(auth chain.Auth, _ ids.ID) [][]byte {
 	}
 }
 
-func (co *CancelOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+func (co *CancelOrder) Fee(timestamp int64, blockHeight uint64, auth chain.Auth, memoryState any) (amount uint64) {
 	return 1
 }
 

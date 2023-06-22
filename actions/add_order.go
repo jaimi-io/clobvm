@@ -31,12 +31,12 @@ func (ao *AddOrder) ValidRange(r chain.Rules) (start int64, end int64) {
 	return -1, -1
 }
 
-func (ao *AddOrder) amount(obm *orderbook.OrderbookManager) (uint64, ids.ID) {
+func (ao *AddOrder) amount(obm *orderbook.OrderbookManager, blockHeight uint64) (uint64, ids.ID) {
 	isFilled := false
 	getAmount := orderbook.GetAmountFn(ao.Side, isFilled, ao.Pair)
 	price := ao.Price
 	if price == 0 {
-		price = obm.GetOrderbook(ao.Pair).GetMidPrice()
+		price = obm.GetOrderbook(ao.Pair).GetMidPriceBlk(blockHeight)
 	}
 	amt, tokenID := getAmount(ao.Quantity, price)
 	return amt, tokenID
@@ -50,13 +50,13 @@ func (ao *AddOrder) StateKeys(auth chain.Auth, txID ids.ID) [][]byte {
 	}
 }
 
-func (ao *AddOrder) Fee(timestamp int64, auth chain.Auth, memoryState any) (amount uint64) {
+func (ao *AddOrder) Fee(timestamp int64, blockHeight uint64, auth chain.Auth, memoryState any) (amount uint64) {
 	obm := memoryState.(*orderbook.OrderbookManager)
 	if obm == nil {
 		return 0
 	}
 	user := auth.PublicKey()
-	amt, _ := ao.amount(obm)
+	amt, _ := ao.amount(obm, blockHeight)
 	return obm.GetOrderbook(ao.Pair).GetFee(user, timestamp, amt)
 }
 
@@ -65,7 +65,7 @@ func (ao *AddOrder) Token(memoryState any) (tokenID ids.ID) {
 	if obm == nil {
 		return ao.Pair.QuoteTokenID
 	}
-	_, tokenID = ao.amount(obm)
+	_, tokenID = ao.amount(obm, 0)
 	return tokenID
 }
 
@@ -94,7 +94,7 @@ func (ao *AddOrder) Execute(
 	if quoteBalance, err = storage.PullPendingBalance(ctx, db, obm, user, ao.Pair.QuoteTokenID, blockHeight); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
 	}
-	amount, tokenID := ao.amount(obm)
+	amount, tokenID := ao.amount(obm, blockHeight)
 	var decBalance uint64
 	if decBalance, err = storage.DecBalance(ctx, db, user, tokenID, amount); err != nil {
 		return &chain.Result{Success: false, Units: 0, Output: hutils.ErrBytes(err)}, nil
