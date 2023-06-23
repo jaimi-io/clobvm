@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/ava-labs/avalanche-network-runner v1.4.1
 	github.com/ava-labs/avalanchego v1.10.1
-	github.com/jaimi-io/hypersdk v0.0.1
+	github.com/jaimi-io/hypersdk v0.0.2
 	github.com/manifoldco/promptui v0.9.0
 	github.com/onsi/gomega v1.26.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -143,5 +143,3 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/jaimi-io/hypersdk => ../Project/hypersdk/
