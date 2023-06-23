@@ -36,7 +36,9 @@ func (ao *AddOrder) amount(obm *orderbook.OrderbookManager, blockHeight uint64) 
 	getAmount := orderbook.GetAmountFn(ao.Side, isFilled, ao.Pair)
 	price := ao.Price
 	if price == 0 {
-		price = obm.GetOrderbook(ao.Pair).GetMidPriceBlk(blockHeight)
+		mid := obm.GetOrderbook(ao.Pair).GetMidPriceBlk(blockHeight)
+		// 10% max slippage
+		price = mid + mid/10
 	}
 	amt, tokenID := getAmount(ao.Quantity, price)
 	return amt, tokenID

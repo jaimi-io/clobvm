@@ -23,14 +23,18 @@ func (o *Order) GetID() ids.ID {
 	return o.ID
 }
 
-func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, side bool, blockExpiry uint64) *Order {
+func (o *Order) GetQuantity() uint64 {
+	return o.Quantity
+}
+
+func NewOrder (id ids.ID, user crypto.PublicKey, price uint64, quantity uint64, side bool, currentBlock uint64, blockWindow uint64) *Order {
 	return &Order{
 		ID: id,
 		User: user,
 		Price: price,
 		Quantity: utils.BalanceToQuantity(quantity),
 		Side: side,
-		BlockExpiry: blockExpiry,
+		BlockExpiry: currentBlock + blockWindow,
 	}
 }
 

@@ -42,22 +42,32 @@ func NewOrderbook(pair Pair) *Orderbook {
 }
 
 func (ob *Orderbook) Add(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
-	marketOrder := order.Price == 0
-	if marketOrder {
-		order.Price = ob.GetMidPrice()
+	if order.Price == 0 {
+		ob.AddMarketOrder(order, blockHeight, blockTs, pendingAmounts, metrics)
+	} else {
+		ob.AddLimitOrder(order, blockHeight, blockTs, pendingAmounts, metrics)
 	}
-	if marketOrder && ((order.Side && ob.sellSideVolume < order.Quantity) || (!order.Side && ob.buySideVolume < order.Quantity)) {
+}
+
+func (ob *Orderbook) AddMarketOrder(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
+	order.Price = ob.GetMidPrice()
+	if ((order.Side && ob.sellSideVolume < order.Quantity) || (!order.Side && ob.buySideVolume < order.Quantity)) {
 		feeToReturn := ob.RefundMarketOrderFee(order.User, blockTs, order.Quantity)
 		if feeToReturn > 0 {
-			ob.toPendingAmount(order, feeToReturn, false, pendingAmounts)
+			ob.refundAmount(order, feeToReturn, pendingAmounts)
 		}
 		return
 	}
-	ob.matchOrder(order, blockTs, marketOrder, pendingAmounts, metrics)
+	ob.matchMarketOrder(order, blockTs, pendingAmounts, metrics)
+}
+
+func (ob *Orderbook) AddLimitOrder(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
+	ob.matchLimitOrder(order, blockTs, pendingAmounts, metrics)
+
 	if order.Quantity > 0 {
 		feeToReturn := ob.RefundFee(order.User, blockTs, order.Quantity)
 		if feeToReturn > 0 {
-			ob.toPendingAmount(order, feeToReturn, false, pendingAmounts)
+			ob.refundAmount(order, feeToReturn, pendingAmounts)
 		}
 
 		ob.volumeMap[order.Price] += order.Quantity
@@ -104,8 +114,7 @@ func (ob *Orderbook) Cancel(order *Order, pendingAmounts *[]PendingAmt, metrics 
 		ob.minHeap.Remove(order.ID, order.Price)
 	}
 	ob.Remove(order, metrics)
-	isFilled := false
-	ob.toPendingAmount(order, order.Quantity, isFilled, pendingAmounts)
+	ob.refundAmount(order, order.Quantity, pendingAmounts)
 	metrics.OrderCancelNum()
 }
 
