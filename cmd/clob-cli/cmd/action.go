@@ -249,3 +249,49 @@ var cancelOrderCmd = &cobra.Command{
 		return nil
 	},
 }
+
+var cancelAllOrderCmd = &cobra.Command{
+	Use: "cancel-all-order",
+	RunE: func(*cobra.Command, []string) error {
+		ctx := context.Background()
+		_, _, authFactory, cli, tcli, err := defaultActor()
+		if err != nil {
+			return err
+		}
+		baseTokenID, err := promptToken("base")
+		if err != nil {
+			return err
+		}
+
+		quoteTokenID, err := promptToken("quote")
+		if err != nil {
+			return err
+		}
+
+		// Confirm action
+		cont, err := promptContinue()
+		if !cont || err != nil {
+			return err
+		}
+
+		parser, err := tcli.Parser(ctx)
+		if err != nil {
+			return err
+		}
+
+		// Generate transaction
+		submit, _, _, err := cli.GenerateTransaction(ctx, parser, nil, &actions.CancelOrder{
+			Pair: orderbook.Pair{
+				BaseTokenID: baseTokenID,
+				QuoteTokenID: quoteTokenID,
+			},
+		}, authFactory)
+		if err != nil {
+			return err
+		}
+		if err := submit(ctx); err != nil {
+			return err
+		}
+		return nil
+	},
+}

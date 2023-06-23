@@ -440,10 +440,8 @@ var transferSpamCmd = &cobra.Command{
 	},
 }
 
-var orderSpamCmd = &cobra.Command{
-	Use: "order",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
+func orderSpam(isDeterminstic bool) error {
+	ctx := context.Background()
 
 		chainID, key, _, _, _, err := defaultActor()
 		if err != nil {
@@ -460,6 +458,7 @@ var orderSpamCmd = &cobra.Command{
 			BaseTokenID:  avaxID,
 			QuoteTokenID: usdcID,
 		}
+
 		buyPrices := []uint64{
 			1,
 			2,
@@ -473,6 +472,10 @@ var orderSpamCmd = &cobra.Command{
 			5,
 			6,
 			7,
+		}
+		if !isDeterminstic {
+			buyPrices = []uint64{5}
+			sellPrices = []uint64{5}
 		}
 
 		// Distribute funds
@@ -739,9 +742,9 @@ var orderSpamCmd = &cobra.Command{
 							side := k%2 == 0
 							var price uint64
 							if side {
-								price = buyPrices[k%5]
+								price = buyPrices[k%len(buyPrices)]
 							} else {
-								price = sellPrices[k%5]
+								price = sellPrices[k%len(sellPrices)]
 							}
 							_, tx, fees, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
 								Pair:     pair,
@@ -884,5 +887,18 @@ var orderSpamCmd = &cobra.Command{
 			usdcID,
 		)
 		return nil
+}
+
+var orderMatchSpamCmd = &cobra.Command{
+	Use: "order-match",
+	RunE: func(*cobra.Command, []string) error {
+		return orderSpam(false)
+	},
+}
+
+var orderDeterministicSpamCmd = &cobra.Command{
+	Use: "order-deterministic",
+	RunE: func(*cobra.Command, []string) error {
+		return orderSpam(true)
 	},
 }
