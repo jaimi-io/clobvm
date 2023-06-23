@@ -59,6 +59,7 @@ func (ob *Orderbook) AddMarketOrder(order *Order, blockHeight uint64, blockTs in
 		return
 	}
 	ob.matchMarketOrder(order, blockTs, pendingAmounts, metrics)
+	metrics.MarketOrder()
 }
 
 func (ob *Orderbook) AddLimitOrder(order *Order, blockHeight uint64, blockTs int64, pendingAmounts *[]PendingAmt, metrics *metrics.Metrics) {
@@ -91,6 +92,7 @@ func (ob *Orderbook) AddLimitOrder(order *Order, blockHeight uint64, blockTs int
 		metrics.OrderNumInc()
 		metrics.OrderAmountAdd(order.Quantity)
 	}
+	metrics.LimitOrder()
 }
 
 func (ob *Orderbook) Get(id ids.ID) *Order {
