@@ -46,10 +46,7 @@ func init() {
 		addOrderCmd,
 		cancelOrderCmd,
 		marketOrderCmd,
-	)
-
-	prometheusCmd.AddCommand(
-		generatePrometheusCmd,
+		cancelAllOrderCmd,
 	)
 
 	spamCmd.AddCommand(

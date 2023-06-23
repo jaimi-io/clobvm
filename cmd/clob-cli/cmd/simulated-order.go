@@ -188,7 +188,7 @@ func simulateMarketMaker(issuer *txIssuer, parser chain.Parser, factory *auth.E2
 }
 
 var simulateOrderCmd = &cobra.Command{
-	Use: "simulate",
+	Use: "order-simulated",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
 

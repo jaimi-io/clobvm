@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,13 +12,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
-
-var prometheusCmd = &cobra.Command{
-	Use: "prometheus",
-	RunE: func(*cobra.Command, []string) error {
-		return errors.New("subcommand not implemented")
-	},
-}
 
 type PrometheusStaticConfig struct {
 	Targets []string `yaml:"targets"`
@@ -39,8 +31,8 @@ type PrometheusConfig struct {
 	ScrapeConfigs []*PrometheusScrapeConfig `yaml:"scrape_configs"`
 }
 
-var generatePrometheusCmd = &cobra.Command{
-	Use: "generate",
+var prometheusCmd = &cobra.Command{
+	Use: "prometheus",
 	RunE: func(_ *cobra.Command, args []string) error {
 		// Generate Prometheus-compatible endpoints
 		chainID, _, _, _, _, err := defaultActor()
