@@ -38,7 +38,7 @@ For example, to get the AVAX balance of `clob12l2xyad754fu3s9rqdwq4mkllnl0vc5yer
 ## clob-cli Setup
 To easily run the CLI ensure a private key is input at file `.key.pk` and the node URIs in `.uri`. The following commands are supported:
 
-![CLI Commands](https://i.imgur.com/Kvet2kv.png)
+![CLI Commands](https://i.imgur.com/TfaLqNz.png)
 
 When executing a spam command, the output is as follows:
 
