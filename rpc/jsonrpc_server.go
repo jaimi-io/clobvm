@@ -75,7 +75,8 @@ func (j *JSONRPCServer) MidPrice(req *http.Request, args *MidPriceArgs, reply *M
 }
 
 type AllOrdersArgs struct {
-	Pair orderbook.Pair `json:"pair"`
+	Pair      orderbook.Pair `json:"pair"`
+	NumPriceLevels int `json:"numPriceLevels"`
 }
 type AllOrdersReply struct {
 	BuySide  string `json:"buySide"`
@@ -86,7 +87,7 @@ func (j *JSONRPCServer) AllOrders(req *http.Request, args *AllOrdersArgs, reply 
 	defer span.End()
 
 	var err error
-	reply.BuySide, reply.SellSide, err = j.c.GetOrderbook(ctx, args.Pair)
+	reply.BuySide, reply.SellSide, err = j.c.GetOrderbook(ctx, args.Pair, args.NumPriceLevels)
 	return err
 }
 
@@ -110,6 +111,7 @@ func (j *JSONRPCServer) PendingFunds(req *http.Request, args *PendingFundsArgs, 
 
 type VolumesArgs struct {
 	Pair orderbook.Pair `json:"pair"`
+	NumPriceLevels int `json:"numPriceLevels"`
 }
 type VolumesReply struct {
 	Volumes  string `json:"volumes"`
@@ -119,6 +121,6 @@ func (j *JSONRPCServer) Volumes(req *http.Request, args *VolumesArgs, reply *Vol
 	defer span.End()
 
 	var err error
-	reply.Volumes, err = j.c.GetVolumes(ctx, args.Pair)
+	reply.Volumes, err = j.c.GetVolumes(ctx, args.Pair, args.NumPriceLevels)
 	return err
 }

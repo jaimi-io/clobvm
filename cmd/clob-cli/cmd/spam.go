@@ -52,7 +52,7 @@ func (t *timeModifier) Base(b *chain.Base) {
 	b.Timestamp = t.Timestamp
 }
 
-var balance = uint64(1_000_000_000 * utils.MinBalance())
+var balance = uint64(5_000_000_000 * utils.MinBalance())
 
 var spamCmd = &cobra.Command{
 	Use: "spam",

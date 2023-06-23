@@ -66,9 +66,10 @@ func (j *JSONRPCClient) MidPrice(ctx context.Context, pair orderbook.Pair) (floa
 	return reply.MidPrice, err
 }
 
-func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (string, string, error) {
+func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair, numPriceLevels int) (string, string, error) {
 	args := &AllOrdersArgs{
 		Pair: pair,
+		NumPriceLevels: numPriceLevels,
 	}
 	var reply AllOrdersReply
 	err := j.requester.SendRequest(ctx, "allOrders", args, &reply)
@@ -86,9 +87,10 @@ func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey,
 	return reply.Balance, reply.BlockHeight, err
 }
 
-func (j *JSONRPCClient) Volumes(ctx context.Context, pair orderbook.Pair) (string, error) {
+func (j *JSONRPCClient) Volumes(ctx context.Context, pair orderbook.Pair, numPriceLevels int) (string, error) {
 	args := &VolumesArgs{
 		Pair: pair,
+		NumPriceLevels: numPriceLevels,
 	}
 	var reply VolumesReply
 	err := j.requester.SendRequest(ctx, "volumes", args, &reply)

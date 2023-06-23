@@ -105,7 +105,7 @@ func distributeTokens(ctx context.Context, db chain.Database) error {
 			return err
 		}
 		decimals := uint64(math.Pow10(consts.BalanceDecimals))
-		amt := uint64(10_000_000_000) * decimals
+		amt := uint64(18_000_000_000) * decimals
 		for _, tokenID := range tokens {
 			err = storage.SetBalance(ctx, db, addr, tokenID, amt)
 			if err != nil {

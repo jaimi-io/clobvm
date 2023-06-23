@@ -19,13 +19,10 @@ func (c *Controller) GetBalance(ctx context.Context, pk crypto.PublicKey, tokenI
 	return storage.GetBalanceFromState(ctx, c.inner.ReadState, pk, tokenID)
 }
 
-func (c *Controller) GetOrderbook(ctx context.Context, pair orderbook.Pair) (string, string, error) {
+func (c *Controller) GetOrderbook(ctx context.Context, pair orderbook.Pair, numPriceLevels int) (string, string, error) {
 	ob := c.orderbookManager.GetOrderbook(pair)
-	if ob == nil {
-		return "", "", fmt.Errorf("orderbook not found for pair %s", pair)
-	}
-	buySide := ob.GetBuySide()
-	sellSide := ob.GetSellSide()
+	buySide := ob.GetBuySide(numPriceLevels)
+	sellSide := ob.GetSellSide(numPriceLevels)
 	return fmt.Sprint(buySide), fmt.Sprint(sellSide), nil
 }
 
@@ -43,10 +40,10 @@ func (c *Controller) GetPendingFunds(ctx context.Context, user crypto.PublicKey,
 	return c.orderbookManager.GetPendingFunds(user, tokenID, blockHeight)
 }
 
-func (c *Controller) GetVolumes(ctx context.Context, pair orderbook.Pair) (string, error) {
+func (c *Controller) GetVolumes(ctx context.Context, pair orderbook.Pair, numPriceLevels int) (string, error) {
 	ob := c.orderbookManager.GetOrderbook(pair)
 	if ob == nil {
 		return "", fmt.Errorf("orderbook not found for pair %s", pair)
 	}
-	return ob.GetVolumes(), nil
+	return ob.GetVolumes(numPriceLevels), nil
 }

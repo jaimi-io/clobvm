@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/utils/math"
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/heap"
 	"github.com/jaimi-io/clobvm/metrics"
@@ -134,10 +135,6 @@ func (ob *Orderbook) Remove(order *Order, metrics *metrics.Metrics) {
 	metrics.OrderAmountSub(order.Quantity)
 }
 
-func (ob *Orderbook) GetBuySide() [][]*Order {
-	return ob.maxHeap.Values()
-}
-
 func (ob *Orderbook) GetMidPrice() uint64 {
 	if ob.maxHeap.Len() == 0 && ob.minHeap.Len() == 0 {
 		return 0
@@ -172,22 +169,82 @@ func (ob *Orderbook) AddMidPriceBlk(blockHeight uint64) {
 	ob.midPrice.Put(ob.GetMidPrice(), blockHeight)
 }
 
-func (ob *Orderbook) GetSellSide() [][]*Order {
-	return ob.minHeap.Values()
-}
-
-func (ob *Orderbook) GetVolumes() string {
+func (ob *Orderbook) getPrices() []int {
 	priceLevels := len(ob.volumeMap)
 	prices := make([]int, 0, priceLevels)
-	for price := range ob.volumeMap {
-		prices = append(prices, int(price))
+	for price, vol := range ob.volumeMap {
+		if vol > 0 {
+			prices = append(prices, int(price))
+		}
 	}
 	sort.Ints(prices)
-	var outputStr string
-	format := "%." + fmt.Sprint(consts.PriceDecimals) + "f : %." + fmt.Sprint(consts.QuantityDecimals) + "f\n"
-	for i := priceLevels - 1; i >= 0; i-- {
-		outputStr += fmt.Sprintf(format, utils.DisplayPrice(uint64(prices[i])), utils.DisplayQuantity(ob.volumeMap[uint64(prices[i])]))
+	return prices
+}
+
+func (ob *Orderbook) GetBuySide(numPriceLevels int) [][]*Order {
+	var res [][]*Order
+	prices := ob.getPrices()
+	if ob.maxHeap.Len() == 0 {
+		return res
 	}
-	return fmt.Sprint(outputStr)
+	i := sort.SearchInts(prices, int(ob.maxHeap.Peek().Priority()))
+	if i == len(prices) {
+		return res
+	}
+	for q, _ := ob.maxHeap.Get(uint64(prices[i])); i >= 0 && q != nil && numPriceLevels > 0; q, _ = ob.maxHeap.Get(uint64(prices[i])) {
+		res = append(res, q.Values())
+		i -= 1
+		numPriceLevels -= 1
+	}
+	return res
+}
+
+func (ob *Orderbook) GetSellSide(numPriceLevels int) [][]*Order {
+	var res [][]*Order
+	prices := ob.getPrices()
+	if ob.minHeap.Len() == 0 {
+		return res
+	}
+	i := sort.SearchInts(prices, int(ob.minHeap.Peek().Priority()))
+	if i == len(prices) {
+		return res
+	}
+	for q, _ := ob.minHeap.Get(uint64(prices[i])); q != nil && numPriceLevels > 0; q, _ = ob.minHeap.Get(uint64(prices[i])) {
+		res = append(res, q.Values())
+		i += 1
+		numPriceLevels -= 1
+	}
+	return res
+}
+
+func (ob *Orderbook) GetVolumes(numPriceLevels int) string {
+	prices := ob.getPrices()
+	priceLevels := len(prices)
+	var outputStr string
+
+	if ob.minHeap.Len() == 0 {
+		return outputStr
+	}
+	i := sort.SearchInts(prices, int(ob.minHeap.Peek().Priority()))
+	sellFormat := "{{red}}%." + fmt.Sprint(consts.PriceDecimals) + "f : %." + fmt.Sprint(consts.QuantityDecimals) + "f{{/}}\n"
+	for k := i; k < priceLevels && k - i < numPriceLevels; k++ {
+		outputStr += fmt.Sprintf(sellFormat, utils.DisplayPrice(uint64(prices[k])), utils.DisplayQuantity(ob.volumeMap[uint64(prices[k])]))
+	}
+
+	if ob.maxHeap.Len() == 0 {
+		return outputStr
+	}
+
+	j := sort.SearchInts(prices, int(ob.maxHeap.Peek().Priority()))
+	if j == len(prices) {
+		return outputStr
+	}
+
+	buyFormat := "{{green}}%." + fmt.Sprint(consts.PriceDecimals) + "f : %." + fmt.Sprint(consts.QuantityDecimals) + "f{{/}}\n"
+	for m := math.Max(i, j - numPriceLevels); m >= 0 && j - m < numPriceLevels; m-- {
+		outputStr += fmt.Sprintf(buyFormat, utils.DisplayPrice(uint64(prices[m])), utils.DisplayQuantity(ob.volumeMap[uint64(prices[m])]))
+	}
+
+	return outputStr
 }
 
