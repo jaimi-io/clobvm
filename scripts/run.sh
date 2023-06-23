@@ -12,7 +12,7 @@ if ! [[ "$0" =~ scripts/run.sh ]]; then
 fi
 
 VERSION=1.10.1
-MODE=${MODE:-run}
+MODE=${MODE:-run-single}
 LOGLEVEL=${LOGLEVEL:-info}
 AVALANCHE_LOG_LEVEL=${AVALANCHE_LOG_LEVEL:-INFO}
 STATESYNC_DELAY=${STATESYNC_DELAY:-0}
@@ -110,21 +110,7 @@ find /tmp/avalanchego-v${VERSION}
 echo "creating vm genesis"
 rm -f /tmp/clobvm.genesis
 cat <<EOF > /tmp/clobvm.genesis
-{
-  "hrp":"clob",
-  "maxBlockTxs":20000,
-  "maxBlockUnits":4000000,
-  "baseUnits":48,
-  "validityWindow":60,
-  "minUnitPrice":1,
-  "unitPriceChangeDenominator":48,
-  "windowTargetUnits":100000000000,
-  "minBlockCost":0,
-  "blockCostChangeDenominator":48,
-  "windowTargetBlocks":30,
-  "warpBaseFee":1024,
-  "warpFeePerSigner":128,
-}
+{"hrp":"clob","maxBlockTxs":20000,"maxBlockUnits":18446744073709551615,"baseUnits":0,"validityWindow":60,"minUnitPrice":1,"unitPriceChangeDenominator":48,"windowTargetUnits":20000000000,"minBlockCost":0,"blockCostChangeDenominator":48,"windowTargetBlocks":1000000000}
 EOF
 
 ############################

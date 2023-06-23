@@ -40,7 +40,7 @@ type Controller struct {
 	snowCtx *snow.Context
 	stateManager *StateManager
 	config *config.Config
-	rules *genesis.Rules
+	genesis *genesis.Genesis
 }
 
 func New() *vm.VM {
@@ -77,8 +77,10 @@ func (c *Controller) Initialize(
 	if err != nil {
 		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
 	}
-	gen := genesis.New()
-	c.rules = gen.GetRules()
+	c.genesis, err = genesis.New(genesisBytes, upgradeBytes)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, err
+	}
 	c.orderbookManager = orderbook.NewOrderbookManager()
 	bcfg := builder.DefaultTimeConfig()
 	bcfg.PreferredBlocksPerSecond = 3
@@ -119,11 +121,11 @@ func (c *Controller) Initialize(
 	}
 	apis[consts.JSONRPCEndpoint] = jsonRPCHandler
 	inner.Logger().Info("Returning from controller.Initialize")
-	return c.config, gen, build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
+	return c.config, c.genesis, build, gossip, blockDB, stateDB, apis, registry.ActionRegistry, registry.AuthRegistry, c.orderbookManager, err
 }
 
 func (c *Controller) Rules(t int64) chain.Rules {
-	return c.rules
+	return c.genesis.GetRules()
 }
 
 func (c *Controller) StateManager() chain.StateManager {
@@ -145,7 +147,7 @@ func (c *Controller) Accepted(ctx context.Context, blk *chain.StatelessBlock) er
 			switch action := tx.Action.(type) {
 			case *actions.AddOrder:
 				c.metrics.AddOrder()
-				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side, blk.Hght + action.BlockExpiryWindow)
+				order := orderbook.NewOrder(tx.ID(), addr, action.Price, action.Quantity, action.Side, blk.Hght, action.BlockExpiryWindow)
 				ob := c.orderbookManager.GetOrderbook(action.Pair)
 				ob.Add(order, blk.Hght, blk.Tmstmp, pendingAmtPtr, c.metrics)
 			case *actions.CancelOrder:

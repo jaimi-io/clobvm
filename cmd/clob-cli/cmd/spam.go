@@ -19,7 +19,6 @@ import (
 	"github.com/jaimi-io/clobvm/actions"
 	"github.com/jaimi-io/clobvm/auth"
 	"github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
-	"github.com/jaimi-io/clobvm/genesis"
 	"github.com/jaimi-io/clobvm/orderbook"
 	trpc "github.com/jaimi-io/clobvm/rpc"
 	"github.com/jaimi-io/clobvm/utils"
@@ -53,7 +52,7 @@ func (t *timeModifier) Base(b *chain.Base) {
 	b.Timestamp = t.Timestamp
 }
 
-var balance = uint64(1_000_000_000 * utils.MinBalance())
+var balance = uint64(5_000_000_000 * utils.MinBalance())
 
 var spamCmd = &cobra.Command{
 	Use: "spam",
@@ -108,7 +107,7 @@ var transferSpamCmd = &cobra.Command{
 
 		uris := consts.URIS
 		cli := rpc.NewJSONRPCClient(uris[0])
-		tcli := trpc.NewRPCClient(uris[0], chainID, genesis.New())
+		tcli := trpc.NewRPCClient(uris[0], chainID)
 		factory := auth.NewEIP712Factory(key)
 		avaxID, _ := getTokens()
 
@@ -198,7 +197,7 @@ var transferSpamCmd = &cobra.Command{
 		clients := make([]*txIssuer, len(uris))
 		for i := 0; i < len(uris); i++ {
 			cli := rpc.NewJSONRPCClient(uris[i])
-			tcli := trpc.NewRPCClient(uris[i], chainID, genesis.New())
+			tcli := trpc.NewRPCClient(uris[i], chainID)
 			dcli, err := rpc.NewWebSocketClient(uris[i], 128_000, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
@@ -441,10 +440,8 @@ var transferSpamCmd = &cobra.Command{
 	},
 }
 
-var orderSpamCmd = &cobra.Command{
-	Use: "order",
-	RunE: func(*cobra.Command, []string) error {
-		ctx := context.Background()
+func orderSpam(isDeterminstic bool) error {
+	ctx := context.Background()
 
 		chainID, key, _, _, _, err := defaultActor()
 		if err != nil {
@@ -453,7 +450,7 @@ var orderSpamCmd = &cobra.Command{
 
 		uris := consts.URIS
 		cli := rpc.NewJSONRPCClient(uris[0])
-		tcli := trpc.NewRPCClient(uris[0], chainID, genesis.New())
+		tcli := trpc.NewRPCClient(uris[0], chainID)
 	
 		factory := auth.NewEIP712Factory(key)
 		avaxID, usdcID := getTokens()
@@ -461,6 +458,7 @@ var orderSpamCmd = &cobra.Command{
 			BaseTokenID:  avaxID,
 			QuoteTokenID: usdcID,
 		}
+
 		buyPrices := []uint64{
 			1,
 			2,
@@ -474,6 +472,10 @@ var orderSpamCmd = &cobra.Command{
 			5,
 			6,
 			7,
+		}
+		if !isDeterminstic {
+			buyPrices = []uint64{5}
+			sellPrices = []uint64{5}
 		}
 
 		// Distribute funds
@@ -505,7 +507,7 @@ var orderSpamCmd = &cobra.Command{
 		clients := make([]*txIssuer, len(uris))
 		for i := 0; i < len(uris); i++ {
 			cli := rpc.NewJSONRPCClient(uris[i])
-			tcli := trpc.NewRPCClient(uris[i], chainID, genesis.New())
+			tcli := trpc.NewRPCClient(uris[i], chainID)
 			dcli, err := rpc.NewWebSocketClient(uris[i], 128_000, pubsub.MaxReadMessageSize)
 			if err != nil {
 				return err
@@ -740,9 +742,9 @@ var orderSpamCmd = &cobra.Command{
 							side := k%2 == 0
 							var price uint64
 							if side {
-								price = buyPrices[k%5]
+								price = buyPrices[k%len(buyPrices)]
 							} else {
-								price = sellPrices[k%5]
+								price = sellPrices[k%len(sellPrices)]
 							}
 							_, tx, fees, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
 								Pair:     pair,
@@ -885,5 +887,18 @@ var orderSpamCmd = &cobra.Command{
 			usdcID,
 		)
 		return nil
+}
+
+var orderMatchSpamCmd = &cobra.Command{
+	Use: "order-match",
+	RunE: func(*cobra.Command, []string) error {
+		return orderSpam(false)
+	},
+}
+
+var orderDeterministicSpamCmd = &cobra.Command{
+	Use: "order-deterministic",
+	RunE: func(*cobra.Command, []string) error {
+		return orderSpam(true)
 	},
 }

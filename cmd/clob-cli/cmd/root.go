@@ -54,7 +54,8 @@ func init() {
 
 	spamCmd.AddCommand(
 		transferSpamCmd,
-		orderSpamCmd,
+		orderMatchSpamCmd,
+		orderDeterministicSpamCmd,
 		simulateOrderCmd,
 	)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/hypersdk/crypto"
+	"github.com/jaimi-io/hypersdk/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -77,9 +78,14 @@ var allOrdersCmd = &cobra.Command{
 			return err
 		}
 
+		numPriceLevels, err := promptInt("num price levels")
+		if err != nil {
+			return err
+		}
+
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 		
-		buySide, sellSide, err := cli.AllOrders(ctx, pair)
+		buySide, sellSide, err := cli.AllOrders(ctx, pair, numPriceLevels)
 		if err != nil {
 			return err
 		}
@@ -141,12 +147,17 @@ var volumesCmd = &cobra.Command{
 			return err
 		}
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
-		
-		volumes, err := cli.Volumes(ctx, pair)
+
+		numPriceLevels, err := promptInt("num price levels")
 		if err != nil {
 			return err
 		}
-		fmt.Printf(volumes)
+		
+		volumes, err := cli.Volumes(ctx, pair, numPriceLevels)
+		if err != nil {
+			return err
+		}
+		utils.Outf(volumes)
 		return nil
 	},
 }

@@ -21,11 +21,30 @@ type JSONRPCClient struct {
 	genesis *genesis.Genesis
 }
 
-func NewRPCClient(uri string, chainID ids.ID, g *genesis.Genesis) *JSONRPCClient {
+func NewRPCClient(uri string, chainID ids.ID) *JSONRPCClient {
 	uri = strings.TrimSuffix(uri, "/")
 	uri += consts.JSONRPCEndpoint
 	req := requester.New(uri, "clobvm")
-	return &JSONRPCClient{req, chainID, g}
+	return &JSONRPCClient{req, chainID, nil}
+}
+
+func (cli *JSONRPCClient) Genesis(ctx context.Context) (*genesis.Genesis, error) {
+	if cli.genesis != nil {
+		return cli.genesis, nil
+	}
+
+	resp := new(GenesisReply)
+	err := cli.requester.SendRequest(
+		ctx,
+		"genesis",
+		nil,
+		resp,
+	)
+	if err != nil {
+		return nil, err
+	}
+	cli.genesis = resp.Genesis
+	return resp.Genesis, nil
 }
 
 func (j *JSONRPCClient) Balance(ctx context.Context, address string, tokenID ids.ID) (float64, error) {
@@ -47,9 +66,10 @@ func (j *JSONRPCClient) MidPrice(ctx context.Context, pair orderbook.Pair) (floa
 	return reply.MidPrice, err
 }
 
-func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair) (string, string, error) {
+func (j *JSONRPCClient) AllOrders(ctx context.Context, pair orderbook.Pair, numPriceLevels int) (string, string, error) {
 	args := &AllOrdersArgs{
 		Pair: pair,
+		NumPriceLevels: numPriceLevels,
 	}
 	var reply AllOrdersReply
 	err := j.requester.SendRequest(ctx, "allOrders", args, &reply)
@@ -67,9 +87,10 @@ func (j *JSONRPCClient) PendingFunds(ctx context.Context, user crypto.PublicKey,
 	return reply.Balance, reply.BlockHeight, err
 }
 
-func (j *JSONRPCClient) Volumes(ctx context.Context, pair orderbook.Pair) (string, error) {
+func (j *JSONRPCClient) Volumes(ctx context.Context, pair orderbook.Pair, numPriceLevels int) (string, error) {
 	args := &VolumesArgs{
 		Pair: pair,
+		NumPriceLevels: numPriceLevels,
 	}
 	var reply VolumesReply
 	err := j.requester.SendRequest(ctx, "volumes", args, &reply)
@@ -86,7 +107,7 @@ func (p *Parser) ChainID() ids.ID {
 }
 
 func (p *Parser) Rules(t int64) chain.Rules {
-	return p.genesis.GetRules()
+	return p.genesis.NewRules()
 }
 
 func (*Parser) Registry() (chain.ActionRegistry, chain.AuthRegistry) {
@@ -94,5 +115,9 @@ func (*Parser) Registry() (chain.ActionRegistry, chain.AuthRegistry) {
 }
 
 func (cli *JSONRPCClient) Parser(ctx context.Context) (chain.Parser, error) {
-	return &Parser{cli.chainID, cli.genesis}, nil
+	g, err := cli.Genesis(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &Parser{cli.chainID, g}, nil
 }

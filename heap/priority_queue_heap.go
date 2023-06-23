@@ -106,6 +106,10 @@ func (ph *PriorityQueueHeap[V, S]) PopQueue() *queue.LinkedMapQueue[V, S] {
 	return q.(*queue.LinkedMapQueue[V, S])
 }
 
+func (ph *PriorityQueueHeap[V, S]) PushQueue(q *queue.LinkedMapQueue[V, S])  {
+	heap.Push(ph, q)
+}
+
 func (ph *PriorityQueueHeap[V, S]) Values() [][]V {
 	values := make([][]V, 0, len(ph.items))
 	for _, item := range ph.items {

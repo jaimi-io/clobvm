@@ -16,4 +16,5 @@ const (
 
 	JSONRPCEndpoint = "/clobapi"
 	Name            = "clobvm"
+	HRP						  = "clob"
 )

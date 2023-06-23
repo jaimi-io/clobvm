@@ -15,6 +15,9 @@ type Metrics struct {
 	transfer      prometheus.Counter
 	addOrder      prometheus.Counter
 	cancelOrder   prometheus.Counter
+	limitOrder    prometheus.Counter
+	marketOrder   prometheus.Counter
+
 
 	orderCancelNum   prometheus.Counter
 	orderNum         prometheus.Gauge
@@ -51,6 +54,16 @@ func NewMetrics(gatherer ametrics.MultiGatherer) (*Metrics, error) {
 			Name:      "cancel_order",
 			Help:      "number of cancel order actions",
 		}),
+		limitOrder: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "orders",
+			Name:      "limit_order",
+			Help:      "number of successful limit orders entered",
+		}),
+		marketOrder: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "orders",
+			Name:      "market_order",
+			Help:      "number of successful market orders entered",
+		}),
 		orderCancelNum: prometheus.NewCounter(prometheus.CounterOpts{
 			Namespace: "orders",
 			Name:      "order_cancel_num",
@@ -83,6 +96,8 @@ func NewMetrics(gatherer ametrics.MultiGatherer) (*Metrics, error) {
 		r.Register(m.transfer),
 		r.Register(m.addOrder),
 		r.Register(m.cancelOrder),
+		r.Register(m.limitOrder),
+		r.Register(m.marketOrder),
 		r.Register(m.orderCancelNum),
 		r.Register(m.orderNum),
 		r.Register(m.orderAmount),
@@ -103,6 +118,14 @@ func (m *Metrics) AddOrder() {
 
 func (m *Metrics) CancelOrder() {
 	m.cancelOrder.Inc()
+}
+
+func (m *Metrics) LimitOrder() {
+	m.limitOrder.Inc()
+}
+
+func (m *Metrics) MarketOrder() {
+	m.marketOrder.Inc()
 }
 
 func (m *Metrics) OrderCancelNum() {

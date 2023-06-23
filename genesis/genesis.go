@@ -2,6 +2,8 @@ package genesis
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"math"
 
 	"github.com/ava-labs/avalanchego/ids"
@@ -38,7 +40,7 @@ type Genesis struct {
 	Rules *Rules
 }
 
-func New() *Genesis {
+func Default() *Genesis {
 	return &Genesis{
 		HRP: "clob",
 
@@ -60,11 +62,20 @@ func New() *Genesis {
 		BlockCostChangeDenominator: 48,
 		WindowTargetBlocks:         1_000_000_000, // 10s
 	}
-	
+}
+
+func New(b []byte, _ []byte) (*Genesis, error) {
+	g := Default()
+	if len(b) > 0 {
+		if err := json.Unmarshal(b, g); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal config %s: %w", string(b), err)
+		}
+	}
+	return g, nil
 }
 
 func (g *Genesis) GetHRP() string {
-	return "clob"
+	return consts.HRP
 }
 
 func (g *Genesis) GetRules() *Rules {
@@ -94,7 +105,7 @@ func distributeTokens(ctx context.Context, db chain.Database) error {
 			return err
 		}
 		decimals := uint64(math.Pow10(consts.BalanceDecimals))
-		amt := uint64(10_000_000_000) * decimals
+		amt := uint64(18_000_000_000) * decimals
 		for _, tokenID := range tokens {
 			err = storage.SetBalance(ctx, db, addr, tokenID, amt)
 			if err != nil {
