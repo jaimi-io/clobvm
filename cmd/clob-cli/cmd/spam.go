@@ -108,7 +108,7 @@ var transferSpamCmd = &cobra.Command{
 		uris := consts.URIS
 		cli := rpc.NewJSONRPCClient(uris[0])
 		tcli := trpc.NewRPCClient(uris[0], chainID)
-		factory := auth.NewEIP712Factory(key)
+		factory := auth.NewE25519Factory(key)
 		avaxID, _ := getTokens()
 
 
@@ -301,7 +301,7 @@ var transferSpamCmd = &cobra.Command{
 				defer t.Stop()
 
 				issuer := getRandomIssuer(clients)
-				factory := auth.NewEIP712Factory(accounts[i])
+				factory := auth.NewE25519Factory(accounts[i])
 				for {
 					select {
 					case <-t.C:
@@ -404,7 +404,7 @@ var transferSpamCmd = &cobra.Command{
 				To:    key.PublicKey(),
 				TokenID: avaxID,
 				Amount: returnAmt,
-			}, auth.NewEIP712Factory(accounts[i]))
+			}, auth.NewE25519Factory(accounts[i]))
 			if err != nil {
 				return err
 			}
@@ -452,7 +452,7 @@ func orderSpam(isDeterminstic bool) error {
 		cli := rpc.NewJSONRPCClient(uris[0])
 		tcli := trpc.NewRPCClient(uris[0], chainID)
 	
-		factory := auth.NewEIP712Factory(key)
+		factory := auth.NewE25519Factory(key)
 		avaxID, usdcID := getTokens()
 		pair := orderbook.Pair{
 			BaseTokenID:  avaxID,
@@ -711,7 +711,7 @@ func orderSpam(isDeterminstic bool) error {
 				defer t.Stop()
 
 				issuer := getRandomIssuer(clients)
-				factory := auth.NewEIP712Factory(accounts[i])
+				factory := auth.NewE25519Factory(accounts[i])
 				ut := time.Now().Unix()
 				for {
 					select {
@@ -830,7 +830,7 @@ func orderSpam(isDeterminstic bool) error {
 				To:    key.PublicKey(),
 				TokenID: avaxID,
 				Amount: returnAmt,
-			}, auth.NewEIP712Factory(accounts[i]))
+			}, auth.NewE25519Factory(accounts[i]))
 			if err != nil {
 				return err
 			}
@@ -849,7 +849,7 @@ func orderSpam(isDeterminstic bool) error {
 				To:    key.PublicKey(),
 				TokenID: usdcID,
 				Amount: returnAmt,
-			}, auth.NewEIP712Factory(accounts[i]))
+			}, auth.NewE25519Factory(accounts[i]))
 			if err != nil {
 				return err
 			}

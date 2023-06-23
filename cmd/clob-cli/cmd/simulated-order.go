@@ -106,7 +106,7 @@ func getMarketOrderSleep() (int64) {
 	return sleepMilli
 }
 
-func simulateMarketOrderer(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712Factory, tm *timeModifier, localMidPrice uint64) {
+func simulateMarketOrderer(issuer *txIssuer, parser chain.Parser, factory *auth.E25519Factory, tm *timeModifier, localMidPrice uint64) {
 	quantity, side := calculateMarketOrder(localMidPrice)
 	_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.AddOrder{
 		Pair:     pair,
@@ -130,7 +130,7 @@ func simulateMarketOrderer(issuer *txIssuer, parser chain.Parser, factory *auth.
 	marketOrder.Add(1)
 }
 
-func cancelAllOrders(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712Factory, tm *timeModifier) {
+func cancelAllOrders(issuer *txIssuer, parser chain.Parser, factory *auth.E25519Factory, tm *timeModifier) {
 	_, tx, _, err := issuer.c.GenerateTransactionManual(parser, nil, &actions.CancelOrder{
 		Pair:     pair,
 		OrderID: ids.GenerateTestID(),
@@ -150,7 +150,7 @@ func cancelAllOrders(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712
 	sent.Add(1)
 }
 
-func simulateMarketMaker(issuer *txIssuer, parser chain.Parser, factory *auth.EIP712Factory, tm *timeModifier, localMidPrice uint64, i int, mm *marketMaker) {
+func simulateMarketMaker(issuer *txIssuer, parser chain.Parser, factory *auth.E25519Factory, tm *timeModifier, localMidPrice uint64, i int, mm *marketMaker) {
 	toUpdate := mm.UpdateParams(localMidPrice)
 	if toUpdate {
 		cancelAllOrders(issuer, parser, factory, tm)
@@ -201,7 +201,7 @@ var simulateOrderCmd = &cobra.Command{
 		cli := rpc.NewJSONRPCClient(uris[0])
 		tcli := trpc.NewRPCClient(uris[0], chainID)
 	
-		factory := auth.NewEIP712Factory(key)
+		factory := auth.NewE25519Factory(key)
 		avaxID, usdcID := getTokens()
 		pair = orderbook.Pair{
 			BaseTokenID:  avaxID,
@@ -464,7 +464,7 @@ var simulateOrderCmd = &cobra.Command{
 				defer t.Stop()
 
 				issuer := getRandomIssuer(clients)
-				factory := auth.NewEIP712Factory(accounts[i])
+				factory := auth.NewE25519Factory(accounts[i])
 				ut := time.Now().Unix()
 				for {
 					select {
@@ -563,7 +563,7 @@ var simulateOrderCmd = &cobra.Command{
 				To:    key.PublicKey(),
 				TokenID: avaxID,
 				Amount: returnAmt,
-			}, auth.NewEIP712Factory(accounts[i]))
+			}, auth.NewE25519Factory(accounts[i]))
 			if err != nil {
 				return err
 			}
@@ -582,7 +582,7 @@ var simulateOrderCmd = &cobra.Command{
 				To:    key.PublicKey(),
 				TokenID: usdcID,
 				Amount: returnAmt,
-			}, auth.NewEIP712Factory(accounts[i]))
+			}, auth.NewE25519Factory(accounts[i]))
 			if err != nil {
 				return err
 			}

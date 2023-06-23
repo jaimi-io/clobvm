@@ -83,8 +83,8 @@ func promptURIs() (string, []string, error) {
 	return uri, uris, err
 }
 
-func defaultActor() (ids.ID, crypto.PrivateKey, *auth.EIP712Factory, *rpc.JSONRPCClient, *crpc.JSONRPCClient, error) {
-	return consts.ChainID, consts.PrivKey, auth.NewEIP712Factory(
+func defaultActor() (ids.ID, crypto.PrivateKey, *auth.E25519Factory, *rpc.JSONRPCClient, *crpc.JSONRPCClient, error) {
+	return consts.ChainID, consts.PrivKey, auth.NewE25519Factory(
 			consts.PrivKey,
 		), rpc.NewJSONRPCClient(
 			consts.URI,
