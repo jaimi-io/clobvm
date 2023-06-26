@@ -191,9 +191,9 @@ func (ob *Orderbook) GetBuySide(numPriceLevels int) [][]*Order {
 	if i == len(prices) {
 		return res
 	}
-	for q, _ := ob.maxHeap.Get(uint64(prices[i])); i >= 0 && q != nil && numPriceLevels > 0; q, _ = ob.maxHeap.Get(uint64(prices[i])) {
+	for ; i >= 0 && numPriceLevels > 0; i-- {
+		q, _ := ob.maxHeap.Get(uint64(prices[i]))
 		res = append(res, q.Values())
-		i -= 1
 		numPriceLevels -= 1
 	}
 	return res
@@ -209,9 +209,9 @@ func (ob *Orderbook) GetSellSide(numPriceLevels int) [][]*Order {
 	if i == len(prices) {
 		return res
 	}
-	for q, _ := ob.minHeap.Get(uint64(prices[i])); q != nil && numPriceLevels > 0; q, _ = ob.minHeap.Get(uint64(prices[i])) {
+	for ; i < len(prices) && numPriceLevels > 0; i++ {
+		q, _ := ob.minHeap.Get(uint64(prices[i]))
 		res = append(res, q.Values())
-		i += 1
 		numPriceLevels -= 1
 	}
 	return res
