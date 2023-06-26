@@ -96,8 +96,9 @@ func distributeTokens(ctx context.Context, db chain.Database) error {
 		usdcID,
 	}
 	addressess := []string{
-		"clob1wve8exfmxhzfd2y0jl4aaqyg5yyj3z64k6v5fpe75ck7h7lkg5rscxxzlz",
+		"clob1xdnx5wqmkz83laqmeqamdyftwnm74rldlp2fsh9ymmqsztv7ykysltfjk6",
 		"clob12l2xyad754fu3s9rqdwq4mkllnl0vc5yerygn2aw5xasmjhzmtwspkx4ek",
+		"clob1fz7uy8z5xezg7ns5qke4taflr062eqr5uhxmzan8ys92fpvhd24syx7ft6",
 	}
 	for _, strAddr := range addressess {
 		addr, err := crypto.ParseAddress("clob", strAddr)

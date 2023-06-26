@@ -20,5 +20,5 @@
 build/
 
 # CLI init files
-.key.pk
+.key*.pk
 .uri

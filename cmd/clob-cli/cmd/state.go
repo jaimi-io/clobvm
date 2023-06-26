@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	cmdc "github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/jaimi-io/hypersdk/crypto"
@@ -15,15 +16,20 @@ var balanceCmd = &cobra.Command{
 	Use: "balance",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, _, _, _, cli, err := defaultActor()
+		_, key, _, _, cli, err := defaultActor()
 		if err != nil {
 			return err
 		}
 
-		addr, err := promptAddress("address")
-		if err != nil {
-			return err
+		addr := key.PublicKey()
+
+		if cmdc.GetAddress {
+			addr, err = promptAddress("address")
+			if err != nil {
+				return err
+			}
 		}
+
 		tokenID, err := promptToken("")
 		if err != nil {
 			return err
@@ -48,6 +54,18 @@ var midPriceCmd = &cobra.Command{
 		}
 
 		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
+
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
+		}
+
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 		
 		midPrice, err := cli.MidPrice(ctx, pair)
@@ -68,15 +86,19 @@ var allOrdersCmd = &cobra.Command{
 			return err
 		}
 
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
+		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
+
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
 		}
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
-		}
 
 		numPriceLevels, err := promptInt("num price levels")
 		if err != nil {
@@ -99,14 +121,18 @@ var pendingFundsCmd = &cobra.Command{
 	Use: "pending",
 	RunE: func(*cobra.Command, []string) error {
 		ctx := context.Background()
-		_, _, _, _, cli, err := defaultActor()
+		_, key, _, _, cli, err := defaultActor()
 		if err != nil {
 			return err
 		}
 
-		addr, err := promptAddress("address")
-		if err != nil {
-			return err
+		addr := key.PublicKey()
+
+		if cmdc.GetAddress {
+			addr, err = promptAddress("address")
+			if err != nil {
+				return err
+			}
 		}
 
 		tokenID, err := promptToken("")
@@ -137,15 +163,19 @@ var volumesCmd = &cobra.Command{
 			return err
 		}
 
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
+		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
+
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
 		}
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
-		}
 		pair := orderbook.Pair{BaseTokenID: baseTokenID, QuoteTokenID: quoteTokenID}
 
 		numPriceLevels, err := promptInt("num price levels")

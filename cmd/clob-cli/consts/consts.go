@@ -8,7 +8,10 @@ import (
 
 var (
 	ChainID ids.ID
+	KeyPath string
 	PrivKey crypto.PrivateKey
 	URI string
 	URIS []string
+	GetPair bool
+	GetAddress bool
 )

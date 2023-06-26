@@ -27,9 +27,18 @@ func init() {
 		midPriceCmd,
 	)
 
+	rootCmd.PersistentFlags().BoolVar(&consts.GetPair, "get-pair", false, "get pair from user input")
+	rootCmd.PersistentFlags().BoolVar(&consts.GetAddress, "get-address", false, "get address from user input")
+	rootCmd.PersistentFlags().StringVar(
+		&consts.KeyPath,
+		"pk",
+		".key.pk",
+		"path to private key file",
+	)
+
 	rootCmd.PersistentPreRunE = func(*cobra.Command, []string) error {
 		var err error
-		consts.PrivKey, err = crypto.LoadKey("/home/jaimip/clobvm/.key.pk")
+		consts.PrivKey, err = crypto.LoadKey(consts.KeyPath)
 		if err != nil {
 			return err
 		}

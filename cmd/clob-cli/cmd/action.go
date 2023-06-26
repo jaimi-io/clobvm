@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jaimi-io/clobvm/actions"
+	cmdc "github.com/jaimi-io/clobvm/cmd/clob-cli/consts"
 	"github.com/jaimi-io/clobvm/consts"
 	"github.com/jaimi-io/clobvm/orderbook"
 	"github.com/spf13/cobra"
@@ -78,16 +79,20 @@ var addOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
-		}
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
+		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
+
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
 		}
-		
+				
 		quantity, err := promptAmount("quantity", consts.BalanceDecimals)
 		if err != nil {
 			return err
@@ -148,14 +153,17 @@ var marketOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
-		}
+		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
 		}
 		
 		quantity, err := promptAmount("quantity", consts.BalanceDecimals)
@@ -206,14 +214,17 @@ var cancelOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
-		}
+		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
 		}
 		
 		orderID, err := promptID("orderID")
@@ -258,14 +269,17 @@ var cancelAllOrderCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		baseTokenID, err := promptToken("base")
-		if err != nil {
-			return err
-		}
+		baseTokenID, quoteTokenID := getTokens()
+		if cmdc.GetPair {
+			baseTokenID, err = promptToken("base")
+			if err != nil {
+				return err
+			}
 
-		quoteTokenID, err := promptToken("quote")
-		if err != nil {
-			return err
+			quoteTokenID, err = promptToken("quote")
+			if err != nil {
+				return err
+			}
 		}
 
 		// Confirm action
